@@ -1,13 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Shield, Vote, Users, BarChart3 } from 'lucide-react';
+import { Shield, Vote, Users, BarChart3, ClipboardCheck } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen gradient-hero">
-      {/* Hero Section */}
       <div className="container mx-auto px-4 py-8">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -15,9 +14,7 @@ const Index = () => {
               <Vote className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-display text-xl font-bold text-foreground">
-                CampusVote
-              </h1>
+              <h1 className="font-display text-xl font-bold text-foreground">CampusVote</h1>
               <p className="text-xs text-muted-foreground">Secure E-Voting</p>
             </div>
           </div>
@@ -40,7 +37,7 @@ const Index = () => {
               Your Vote
             </span>
           </h2>
-          
+
           <p className="mt-4 max-w-md text-lg text-muted-foreground animate-slide-up">
             Secure, transparent, and easy-to-use electronic voting for your college elections.
           </p>
@@ -63,24 +60,19 @@ const Index = () => {
 
           {/* Login Buttons */}
           <div className="mt-12 flex w-full max-w-sm flex-col gap-4 animate-slide-up">
-            <Button
-              onClick={() => navigate('/user-login')}
-              variant="hero"
-              size="xl"
-              className="w-full"
-            >
+            <Button onClick={() => navigate('/user-login')} variant="hero" size="xl" className="w-full">
               <Vote className="mr-2 h-5 w-5" />
               Student Login
             </Button>
-            
-            <Button
-              onClick={() => navigate('/admin-login')}
-              variant="glass"
-              size="lg"
-              className="w-full"
-            >
+
+            <Button onClick={() => navigate('/admin-login')} variant="glass" size="lg" className="w-full">
               <Shield className="mr-2 h-5 w-5" />
               Admin Login
+            </Button>
+
+            <Button onClick={() => navigate('/controller-login')} variant="glass" size="lg" className="w-full">
+              <ClipboardCheck className="mr-2 h-5 w-5" />
+              Controller Login
             </Button>
           </div>
 
@@ -95,7 +87,6 @@ const Index = () => {
         </main>
       </div>
 
-      {/* Bottom Wave */}
       <div className="fixed bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
     </div>
   );
