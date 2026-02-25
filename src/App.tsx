@@ -7,9 +7,12 @@ import { VotingProvider } from "@/contexts/VotingContext";
 import Index from "./pages/Index";
 import UserLogin from "./pages/UserLogin";
 import AdminLogin from "./pages/AdminLogin";
+import ControllerLogin from "./pages/ControllerLogin";
 import Vote from "./pages/Vote";
 import Results from "./pages/Results";
 import AdminDashboard from "./pages/AdminDashboard";
+import ControllerDashboard from "./pages/ControllerDashboard";
+import Nominate from "./pages/Nominate";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,9 +28,12 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/user-login" element={<UserLogin />} />
             <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/controller-login" element={<ControllerLogin />} />
             <Route path="/vote" element={<Vote />} />
             <Route path="/results" element={<Results />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/controller" element={<ControllerDashboard />} />
+            <Route path="/nominate" element={<Nominate />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
