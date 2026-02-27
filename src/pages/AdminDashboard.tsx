@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, LogOut, Plus, Trash2, Users, Vote, BarChart3, Power, PowerOff, FileCheck, FileX, Eye,
+  ArrowLeft, LogOut, Plus, Trash2, Users, Vote, BarChart3, Power, PowerOff, FileCheck, FileX, Eye, UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -23,10 +24,13 @@ const AdminDashboard = () => {
     candidates, addCandidate, removeCandidate, votedUsers,
     isAdmin, setIsAdmin, votingActive, setVotingActive,
     nominations, updateNominationStatus,
+    registeredStudents, addStudent, removeStudent,
   } = useVoting();
 
   const [newCandidate, setNewCandidate] = useState({ name: '', position: '' as Position | '', image: '', department: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [studentDialogOpen, setStudentDialogOpen] = useState(false);
+  const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '' });
   const [activeTab, setActiveTab] = useState('candidates');
 
   if (!isAdmin) { navigate('/admin-login'); return null; }
@@ -51,6 +55,26 @@ const AdminDashboard = () => {
   const handleRemoveCandidate = (id: string, name: string) => {
     removeCandidate(id);
     toast({ title: 'Candidate Removed', description: `${name} has been removed.` });
+  };
+
+  const handleAddStudent = () => {
+    if (!newStudent.studentId || !newStudent.name || !newStudent.department) {
+      toast({ title: 'Missing Fields', description: 'Please fill in all fields.', variant: 'destructive' });
+      return;
+    }
+    if (registeredStudents.some(s => s.studentId === newStudent.studentId)) {
+      toast({ title: 'Already Exists', description: 'This student ID is already registered.', variant: 'destructive' });
+      return;
+    }
+    addStudent(newStudent);
+    toast({ title: 'Student Added', description: `${newStudent.name} has been added to the voter list.` });
+    setNewStudent({ studentId: '', name: '', department: '' });
+    setStudentDialogOpen(false);
+  };
+
+  const handleRemoveStudent = (studentId: string, name: string) => {
+    removeStudent(studentId);
+    toast({ title: 'Student Removed', description: `${name} has been removed from the voter list.` });
   };
 
   const handleLogout = () => { setIsAdmin(false); navigate('/'); };
@@ -81,12 +105,13 @@ const AdminDashboard = () => {
 
         <div className="mt-8">
           <h2 className="font-display text-3xl font-bold text-foreground">Admin Dashboard</h2>
-          <p className="mt-2 text-muted-foreground">Manage candidates, nominations & elections</p>
+          <p className="mt-2 text-muted-foreground">Manage candidates, students, nominations & elections</p>
         </div>
 
         {/* Stats */}
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
           <div className="rounded-2xl bg-card p-5 shadow-card"><Users className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{candidates.length}</p><p className="text-sm text-muted-foreground">Candidates</p></div>
+          <div className="rounded-2xl bg-card p-5 shadow-card"><UserPlus className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{registeredStudents.length}</p><p className="text-sm text-muted-foreground">Registered Students</p></div>
           <div className="rounded-2xl bg-card p-5 shadow-card"><Vote className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{votedUsers.length}</p><p className="text-sm text-muted-foreground">Voters</p></div>
           <div className="rounded-2xl bg-card p-5 shadow-card"><BarChart3 className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{totalVotes}</p><p className="text-sm text-muted-foreground">Total Votes</p></div>
           <div className={`rounded-2xl p-5 shadow-card ${votingActive ? 'bg-primary/10' : 'bg-destructive/10'}`}>
@@ -114,7 +139,7 @@ const AdminDashboard = () => {
               </div>
             </DialogContent>
           </Dialog>
-          <Button onClick={toggleVoting} variant={votingActive ? 'destructive' : 'success'} size="lg">
+          <Button onClick={toggleVoting} variant={votingActive ? 'destructive' : 'default'} size="lg">
             {votingActive ? <><PowerOff className="mr-2 h-5 w-5" /> Stop Voting</> : <><Power className="mr-2 h-5 w-5" /> Start Voting</>}
           </Button>
           <Button onClick={() => navigate('/results')} variant="glass" size="lg"><BarChart3 className="mr-2 h-5 w-5" /> View Results</Button>
@@ -122,8 +147,12 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="candidates">Candidates</TabsTrigger>
+            <TabsTrigger value="students">
+              Students
+              <Badge variant="secondary" className="ml-2 text-xs">{registeredStudents.length}</Badge>
+            </TabsTrigger>
             <TabsTrigger value="nominations" className="relative">
               Nominations
               {pendingNominations.length > 0 && (
@@ -170,6 +199,80 @@ const AdminDashboard = () => {
                 </div>
               );
             })}
+          </TabsContent>
+
+          <TabsContent value="students">
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-muted-foreground">Only registered students can vote in the election.</p>
+                <Dialog open={studentDialogOpen} onOpenChange={setStudentDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="hero" size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Student</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Add Student to Voter List</DialogTitle></DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <Input placeholder="Student ID *" value={newStudent.studentId} onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })} />
+                      <Input placeholder="Full Name *" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
+                      <Input placeholder="Department *" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })} />
+                      <Button onClick={handleAddStudent} variant="hero" className="w-full">Add Student</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              <div className="rounded-2xl bg-card shadow-card overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Vote Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registeredStudents.map(student => (
+                      <TableRow key={student.studentId}>
+                        <TableCell className="font-medium text-foreground">{student.studentId}</TableCell>
+                        <TableCell className="text-foreground">{student.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{student.department}</TableCell>
+                        <TableCell>
+                          {votedUsers.includes(student.studentId) ? (
+                            <Badge variant="default">Voted</Badge>
+                          ) : (
+                            <Badge variant="secondary">Not Voted</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove Student?</AlertDialogTitle>
+                                <AlertDialogDescription>Remove {student.name} from the voter list? They will no longer be able to vote.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRemoveStudent(student.studentId, student.name)}>Remove</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {registeredStudents.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No students registered yet.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="nominations">

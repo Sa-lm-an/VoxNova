@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, LogOut, FileText } from 'lucide-react';
+import { ArrowLeft, Check, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CandidateCard } from '@/components/CandidateCard';
 import { useVoting } from '@/contexts/VotingContext';
@@ -80,9 +80,6 @@ const Vote = () => {
             <ArrowLeft className="h-5 w-5" /> Back
           </button>
           <div className="flex items-center gap-4">
-            <Button onClick={() => navigate('/nominate')} variant="glass" size="sm">
-              <FileText className="mr-2 h-4 w-4" /> Apply for Nomination
-            </Button>
             <button onClick={handleLogout} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-destructive">
               <LogOut className="h-5 w-5" /> Logout
             </button>

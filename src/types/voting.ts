@@ -33,6 +33,12 @@ export interface Nomination {
   submittedAt: string;
 }
 
+export interface RegisteredStudent {
+  studentId: string;
+  name: string;
+  department: string;
+}
+
 export interface OfflineVoteRecord {
   studentId: string;
   studentName: string;

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Candidate, User, Nomination, OfflineVoteRecord, Position, POSITIONS } from '@/types/voting';
+import { Candidate, User, Nomination, OfflineVoteRecord, Position, POSITIONS, RegisteredStudent } from '@/types/voting';
 
 interface VotingContextType {
   candidates: Candidate[];
@@ -21,6 +21,10 @@ interface VotingContextType {
   offlineRecords: OfflineVoteRecord[];
   markOfflineVote: (studentId: string, controllerName: string) => void;
   unmarkOfflineVote: (studentId: string) => void;
+  registeredStudents: RegisteredStudent[];
+  addStudent: (student: RegisteredStudent) => void;
+  removeStudent: (studentId: string) => void;
+  isStudentRegistered: (studentId: string) => boolean;
 }
 
 const VotingContext = createContext<VotingContextType | undefined>(undefined);
@@ -34,16 +38,24 @@ const initialCandidates: Candidate[] = [
   { id: '6', name: 'David Kim', position: 'Secretary', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400', votes: 35, department: 'Law' },
 ];
 
-const initialOfflineRecords: OfflineVoteRecord[] = [
-  { studentId: 'STU001', studentName: 'Aarav Patel', department: 'Computer Science', votedOnline: false, markedOffline: false },
-  { studentId: 'STU002', studentName: 'Meera Nair', department: 'Engineering', votedOnline: false, markedOffline: false },
-  { studentId: 'STU003', studentName: 'Rahul Gupta', department: 'Business', votedOnline: false, markedOffline: false },
-  { studentId: 'STU004', studentName: 'Ananya Singh', department: 'Arts', votedOnline: false, markedOffline: false },
-  { studentId: 'STU005', studentName: 'Karthik Iyer', department: 'Science', votedOnline: false, markedOffline: false },
-  { studentId: 'STU006', studentName: 'Sneha Reddy', department: 'Law', votedOnline: false, markedOffline: false },
-  { studentId: 'STU007', studentName: 'Arjun Kumar', department: 'Computer Science', votedOnline: false, markedOffline: false },
-  { studentId: 'STU008', studentName: 'Divya Menon', department: 'Engineering', votedOnline: false, markedOffline: false },
+const initialStudents: RegisteredStudent[] = [
+  { studentId: 'STU001', name: 'Aarav Patel', department: 'Computer Science' },
+  { studentId: 'STU002', name: 'Meera Nair', department: 'Engineering' },
+  { studentId: 'STU003', name: 'Rahul Gupta', department: 'Business' },
+  { studentId: 'STU004', name: 'Ananya Singh', department: 'Arts' },
+  { studentId: 'STU005', name: 'Karthik Iyer', department: 'Science' },
+  { studentId: 'STU006', name: 'Sneha Reddy', department: 'Law' },
+  { studentId: 'STU007', name: 'Arjun Kumar', department: 'Computer Science' },
+  { studentId: 'STU008', name: 'Divya Menon', department: 'Engineering' },
 ];
+
+const initialOfflineRecords: OfflineVoteRecord[] = initialStudents.map(s => ({
+  studentId: s.studentId,
+  studentName: s.name,
+  department: s.department,
+  votedOnline: false,
+  markedOffline: false,
+}));
 
 export function VotingProvider({ children }: { children: ReactNode }) {
   const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates);
@@ -54,6 +66,7 @@ export function VotingProvider({ children }: { children: ReactNode }) {
   const [votingActive, setVotingActive] = useState(true);
   const [nominations, setNominations] = useState<Nomination[]>([]);
   const [offlineRecords, setOfflineRecords] = useState<OfflineVoteRecord[]>(initialOfflineRecords);
+  const [registeredStudents, setRegisteredStudents] = useState<RegisteredStudent[]>(initialStudents);
 
   const addCandidate = (candidate: Omit<Candidate, 'id' | 'votes'>) => {
     const newCandidate: Candidate = { ...candidate, id: Date.now().toString(), votes: 0 };
@@ -76,7 +89,6 @@ export function VotingProvider({ children }: { children: ReactNode }) {
     setVotedUsers(prev => [...prev, currentUser.studentId]);
     setCurrentUser({ ...currentUser, hasVoted: true });
 
-    // Mark as online voter in offline records
     setOfflineRecords(prev =>
       prev.map(r =>
         r.studentId === currentUser.studentId ? { ...r, votedOnline: true } : r
@@ -131,6 +143,27 @@ export function VotingProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const addStudent = (student: RegisteredStudent) => {
+    setRegisteredStudents(prev => [...prev, student]);
+    // Also add to offline records
+    setOfflineRecords(prev => [...prev, {
+      studentId: student.studentId,
+      studentName: student.name,
+      department: student.department,
+      votedOnline: false,
+      markedOffline: false,
+    }]);
+  };
+
+  const removeStudent = (studentId: string) => {
+    setRegisteredStudents(prev => prev.filter(s => s.studentId !== studentId));
+    setOfflineRecords(prev => prev.filter(r => r.studentId !== studentId));
+  };
+
+  const isStudentRegistered = (studentId: string) => {
+    return registeredStudents.some(s => s.studentId === studentId);
+  };
+
   return (
     <VotingContext.Provider
       value={{
@@ -140,6 +173,7 @@ export function VotingProvider({ children }: { children: ReactNode }) {
         votingActive, setVotingActive,
         nominations, addNomination, updateNominationStatus,
         offlineRecords, markOfflineVote, unmarkOfflineVote,
+        registeredStudents, addStudent, removeStudent, isStudentRegistered,
       }}
     >
       {children}
