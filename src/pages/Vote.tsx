@@ -14,19 +14,26 @@ import {
 
 const Vote = () => {
   const navigate = useNavigate();
-  const { candidates, currentUser, castVote, setCurrentUser, votingActive } = useVoting();
+  const { candidates, currentUser, castVote, setCurrentUser, votingActive, offlineRecords } = useVoting();
   const [selectedVotes, setSelectedVotes] = useState<Partial<Record<Position, string>>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
 
   if (!currentUser) { navigate('/user-login'); return null; }
 
-  if (!votingActive) {
+  const offlineRecord = offlineRecords.find(r => r.studentId === currentUser.studentId);
+  const isMarkedOffline = offlineRecord?.markedOffline ?? false;
+
+  if (!votingActive || isMarkedOffline) {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-hero">
         <div className="text-center">
-          <h2 className="font-display text-2xl font-bold text-foreground">Voting is Currently Closed</h2>
-          <p className="mt-2 text-muted-foreground">Please check back later or contact the administrator.</p>
+          <h2 className="font-display text-2xl font-bold text-foreground">
+            {isMarkedOffline ? 'You Have Already Voted Offline' : 'Voting is Currently Closed'}
+          </h2>
+          <p className="mt-2 text-muted-foreground">
+            {isMarkedOffline ? 'Your vote has been recorded through offline voting. Online voting is not available.' : 'Please check back later or contact the administrator.'}
+          </p>
           <Button onClick={() => navigate('/')} variant="hero" className="mt-6">Go Home</Button>
         </div>
       </div>

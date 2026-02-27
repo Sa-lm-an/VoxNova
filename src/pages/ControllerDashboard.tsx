@@ -61,7 +61,11 @@ const ControllerDashboard = () => {
 
   if (!isController) { navigate('/controller-login'); return null; }
 
-  const handleToggle = (studentId: string, currentlyMarked: boolean) => {
+  const handleToggle = (studentId: string, currentlyMarked: boolean, votedOnline: boolean) => {
+    if (votedOnline) {
+      toast({ title: 'Cannot Mark', description: 'This student has already voted online.', variant: 'destructive' });
+      return;
+    }
     if (currentlyMarked) {
       unmarkOfflineVote(studentId);
       toast({ title: 'Unmarked', description: 'Offline vote marking removed.' });
@@ -192,7 +196,7 @@ const ControllerDashboard = () => {
                       <Button
                         variant={record.markedOffline ? 'destructive' : 'hero'}
                         size="sm"
-                        onClick={() => handleToggle(record.studentId, record.markedOffline)}
+                        onClick={() => handleToggle(record.studentId, record.markedOffline, record.votedOnline)}
                       >
                         {record.markedOffline ? 'Unmark' : 'Mark Voted'}
                       </Button>

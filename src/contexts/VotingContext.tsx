@@ -79,7 +79,9 @@ export function VotingProvider({ children }: { children: ReactNode }) {
 
   const castVote = (votes: Record<Position, string>): boolean => {
     if (!currentUser || votedUsers.includes(currentUser.studentId)) return false;
-
+    // Prevent online vote if already marked offline
+    const record = offlineRecords.find(r => r.studentId === currentUser.studentId);
+    if (record?.markedOffline) return false;
     setCandidates(prev =>
       prev.map(c => {
         const votedId = votes[c.position];
@@ -124,6 +126,9 @@ export function VotingProvider({ children }: { children: ReactNode }) {
   };
 
   const markOfflineVote = (studentId: string, controllerName: string) => {
+    // Prevent offline mark if already voted online
+    const record = offlineRecords.find(r => r.studentId === studentId);
+    if (record?.votedOnline || votedUsers.includes(studentId)) return;
     setOfflineRecords(prev =>
       prev.map(r =>
         r.studentId === studentId
