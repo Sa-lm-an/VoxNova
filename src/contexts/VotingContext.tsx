@@ -23,6 +23,7 @@ interface VotingContextType {
   unmarkOfflineVote: (studentId: string) => void;
   registeredStudents: RegisteredStudent[];
   addStudent: (student: RegisteredStudent) => void;
+  addStudentsBulk: (students: RegisteredStudent[]) => { added: number; skipped: number };
   removeStudent: (studentId: string) => void;
   isStudentRegistered: (studentId: string) => boolean;
 }
