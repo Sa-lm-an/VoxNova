@@ -172,7 +172,7 @@ const AdminDashboard = () => {
                         <img src={candidate.image} alt={candidate.name} className="h-16 w-16 rounded-xl object-cover" />
                         <div className="flex-1">
                           <p className="font-semibold text-foreground">{candidate.name}</p>
-                          <p className="text-sm text-muted-foreground">{candidate.department} • {candidate.votes} votes</p>
+                          <p className="text-sm text-muted-foreground">{candidate.department}</p>
                         </div>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
