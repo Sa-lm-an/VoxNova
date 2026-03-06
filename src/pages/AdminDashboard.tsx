@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, LogOut, Plus, Trash2, Users, Vote, BarChart3, Power, PowerOff, FileCheck, FileX, Eye, UserPlus,
+  ArrowLeft, LogOut, Trash2, Users, Vote, BarChart3, Power, PowerOff, FileCheck, FileX, Eye, UserPlus, Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useVoting } from '@/contexts/VotingContext';
 import { toast } from '@/hooks/use-toast';
-import { Position, POSITIONS } from '@/types/voting';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { POSITIONS } from '@/types/voting';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
@@ -21,36 +20,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const {
-    candidates, addCandidate, removeCandidate, votedUsers,
+    candidates, removeCandidate, votedUsers,
     isAdmin, setIsAdmin, votingActive, setVotingActive,
     nominations, updateNominationStatus,
-    registeredStudents, addStudent, removeStudent,
+    registeredStudents, addStudent, addStudentsBulk, removeStudent,
   } = useVoting();
 
-  const [newCandidate, setNewCandidate] = useState({ name: '', position: '' as Position | '', image: '', department: '' });
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '' });
   const [activeTab, setActiveTab] = useState('candidates');
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   if (!isAdmin) { navigate('/admin-login'); return null; }
-
-  
-
-  const handleAddCandidate = () => {
-    if (!newCandidate.name || !newCandidate.department || !newCandidate.position) {
-      toast({ title: 'Missing Fields', description: 'Please fill in all required fields.', variant: 'destructive' });
-      return;
-    }
-    addCandidate({
-      ...newCandidate,
-      position: newCandidate.position as Position,
-      image: newCandidate.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${newCandidate.name}`,
-    });
-    toast({ title: 'Candidate Added', description: `${newCandidate.name} has been added.` });
-    setNewCandidate({ name: '', position: '', image: '', department: '' });
-    setDialogOpen(false);
-  };
 
   const handleRemoveCandidate = (id: string, name: string) => {
     removeCandidate(id);
@@ -70,6 +51,42 @@ const AdminDashboard = () => {
     toast({ title: 'Student Added', description: `${newStudent.name} has been added to the voter list.` });
     setNewStudent({ studentId: '', name: '', department: '' });
     setStudentDialogOpen(false);
+  };
+
+  const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').filter(l => l.trim());
+
+      // Skip header if it looks like one
+      const startIndex = lines[0]?.toLowerCase().includes('studentid') || lines[0]?.toLowerCase().includes('student_id') || lines[0]?.toLowerCase().includes('name') ? 1 : 0;
+
+      const students = [];
+      for (let i = startIndex; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        if (cols.length >= 3 && cols[0] && cols[1] && cols[2]) {
+          students.push({ studentId: cols[0], name: cols[1], department: cols[2] });
+        }
+      }
+
+      if (students.length === 0) {
+        toast({ title: 'No Data Found', description: 'CSV must have columns: StudentID, Name, Department', variant: 'destructive' });
+        return;
+      }
+
+      const { added, skipped } = addStudentsBulk(students);
+      toast({
+        title: 'CSV Import Complete',
+        description: `${added} students added${skipped > 0 ? `, ${skipped} duplicates skipped` : ''}.`,
+      });
+    };
+    reader.readAsText(file);
+    // Reset so same file can be re-imported
+    if (csvInputRef.current) csvInputRef.current.value = '';
   };
 
   const handleRemoveStudent = (studentId: string, name: string) => {
@@ -122,22 +139,6 @@ const AdminDashboard = () => {
 
         {/* Actions */}
         <div className="mt-8 flex flex-wrap gap-4">
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button variant="hero" size="lg"><Plus className="mr-2 h-5 w-5" /> Add Candidate</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Add New Candidate</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-4">
-                <Input placeholder="Candidate Name *" value={newCandidate.name} onChange={e => setNewCandidate({ ...newCandidate, name: e.target.value })} />
-                <Select value={newCandidate.position} onValueChange={v => setNewCandidate({ ...newCandidate, position: v as Position })}>
-                  <SelectTrigger><SelectValue placeholder="Select Position *" /></SelectTrigger>
-                  <SelectContent>{POSITIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                </Select>
-                <Input placeholder="Department *" value={newCandidate.department} onChange={e => setNewCandidate({ ...newCandidate, department: e.target.value })} />
-                <Input placeholder="Image URL (optional)" value={newCandidate.image} onChange={e => setNewCandidate({ ...newCandidate, image: e.target.value })} />
-                <Button onClick={handleAddCandidate} variant="hero" className="w-full">Add Candidate</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
           <Button onClick={toggleVoting} variant={votingActive ? 'destructive' : 'default'} size="lg">
             {votingActive ? <><PowerOff className="mr-2 h-5 w-5" /> Stop Voting</> : <><Power className="mr-2 h-5 w-5" /> Start Voting</>}
           </Button>
@@ -161,6 +162,7 @@ const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="candidates">
+            <p className="mt-4 mb-4 text-sm text-muted-foreground">Candidates are added automatically when nominations are approved.</p>
             {POSITIONS.map(position => {
               const positionCandidates = candidates.filter(c => c.position === position);
               return (
@@ -202,22 +204,43 @@ const AdminDashboard = () => {
 
           <TabsContent value="students">
             <div className="mt-4">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
                 <p className="text-muted-foreground">Only registered students can vote in the election.</p>
-                <Dialog open={studentDialogOpen} onOpenChange={setStudentDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="hero" size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Student</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader><DialogTitle>Add Student to Voter List</DialogTitle></DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <Input placeholder="Student ID *" value={newStudent.studentId} onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })} />
-                      <Input placeholder="Full Name *" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
-                      <Input placeholder="Department *" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })} />
-                      <Button onClick={handleAddStudent} variant="hero" className="w-full">Add Student</Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <div className="flex gap-2">
+                  <input
+                    ref={csvInputRef}
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleCsvImport}
+                  />
+                  <Button variant="glass" size="sm" onClick={() => csvInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" /> Import CSV
+                  </Button>
+                  <Dialog open={studentDialogOpen} onOpenChange={setStudentDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="hero" size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Student</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>Add Student to Voter List</DialogTitle></DialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <Input placeholder="Student ID *" value={newStudent.studentId} onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })} />
+                        <Input placeholder="Full Name *" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
+                        <Input placeholder="Department *" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })} />
+                        <Button onClick={handleAddStudent} variant="hero" className="w-full">Add Student</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-card/60 border border-border/40 p-4 mb-4">
+                <p className="text-xs text-muted-foreground">
+                  <strong>CSV Format:</strong> StudentID, Name, Department (one per row). Header row is optional.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Example: <code className="bg-muted px-1 rounded">STU009,John Doe,Computer Science</code>
+                </p>
               </div>
 
               <div className="rounded-2xl bg-card shadow-card overflow-hidden">
