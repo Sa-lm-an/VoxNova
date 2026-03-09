@@ -73,7 +73,7 @@ const Index = () => {
               <BarChart3 className="h-7 w-7 text-accent-foreground" />
             </div>
             <span className="font-display text-sm font-semibold text-foreground">Results</span>
-            <span className="text-xs text-muted-foreground text-center">View live election results</span>
+            <span className="text-xs text-muted-foreground text-center">View election results</span>
           </button>
         </div>
       </main>
