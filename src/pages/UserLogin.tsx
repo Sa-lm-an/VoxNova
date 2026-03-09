@@ -95,7 +95,6 @@ const UserLogin = () => {
             if (step === 'scan') navigate('/');
             else if (step === 'phone') setStep('scan');
             else if (step === 'otp') setStep('phone');
-            else if (step === 'choice') setStep('scan');
           }}
           className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
         >
