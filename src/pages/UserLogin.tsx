@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Send } from 'lucide-react';
+import { ArrowLeft, Phone, Send, ShieldCheck, Fingerprint, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IdCardScanner } from '@/components/IdCardScanner';
@@ -19,7 +19,6 @@ const UserLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleIdScan = (id: string) => {
-    // Check if student is registered
     if (!isStudentRegistered(id)) {
       toast({
         title: 'Not Registered',
@@ -31,7 +30,6 @@ const UserLogin = () => {
 
     setStudentId(id);
 
-    // Check if already voted
     if (votedUsers.includes(id)) {
       toast({
         title: 'Already Voted',
@@ -86,45 +84,66 @@ const UserLogin = () => {
   };
 
   const stepIndex = ['scan', 'phone', 'otp'].indexOf(step);
+  const stepIcons = [Fingerprint, Phone, KeyRound];
+  const stepLabels = ['Verify ID', 'Phone', 'OTP'];
 
   return (
-    <div className="min-h-screen gradient-hero">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen gradient-hero relative overflow-hidden">
+      {/* Decorative elements */}
+      <div className="absolute top-20 left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/15 rounded-full blur-3xl" />
+      
+      <div className="container mx-auto px-4 py-8 relative z-10">
         <button
           onClick={() => {
             if (step === 'scan') navigate('/');
             else if (step === 'phone') setStep('scan');
             else if (step === 'otp') setStep('phone');
           }}
-          className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+          className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground group"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
           Back
         </button>
 
         <div className="mx-auto mt-8 max-w-md">
           {/* Progress Steps */}
-          <div className="mb-8 flex items-center justify-center gap-2">
-            {['scan', 'phone', 'otp'].map((s, i) => (
-              <div
-                key={s}
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all ${
-                  step === s
-                    ? 'gradient-primary text-primary-foreground shadow-lg'
-                    : i < stepIndex
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {i + 1}
-              </div>
-            ))}
+          <div className="mb-10 flex items-center justify-center gap-3">
+            {stepLabels.map((label, i) => {
+              const Icon = stepIcons[i];
+              return (
+                <div key={label} className="flex items-center gap-3">
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-semibold transition-all duration-300 ${
+                        step === ['scan', 'phone', 'otp'][i]
+                          ? 'gradient-primary text-primary-foreground shadow-glow scale-110'
+                          : i < stepIndex
+                          ? 'bg-primary text-primary-foreground'
+                          : 'glass-card text-muted-foreground'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className={`text-xs font-medium ${step === ['scan', 'phone', 'otp'][i] ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {label}
+                    </span>
+                  </div>
+                  {i < 2 && (
+                    <div className={`w-12 h-0.5 rounded-full mb-6 transition-colors ${i < stepIndex ? 'bg-primary' : 'bg-border'}`} />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <div className="rounded-3xl bg-card p-8 shadow-elevated animate-scale-in">
+          <div className="rounded-3xl glass-card p-8 animate-scale-in">
             {step === 'scan' && (
               <div className="space-y-6">
                 <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary shadow-glow">
+                    <ShieldCheck className="h-8 w-8 text-primary-foreground" />
+                  </div>
                   <h2 className="font-display text-2xl font-bold text-foreground">
                     Verify Your Identity
                   </h2>
@@ -139,6 +158,9 @@ const UserLogin = () => {
             {step === 'phone' && (
               <div className="space-y-6">
                 <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary shadow-glow">
+                    <Phone className="h-8 w-8 text-primary-foreground" />
+                  </div>
                   <h2 className="font-display text-2xl font-bold text-foreground">
                     Phone Verification
                   </h2>
@@ -148,16 +170,16 @@ const UserLogin = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 rounded-xl border-2 border-border bg-muted/50 p-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <Phone className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-3 rounded-2xl border-2 border-border/50 bg-background/50 backdrop-blur-sm p-4 transition-all focus-within:border-primary focus-within:shadow-glow">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                      <Phone className="h-6 w-6 text-primary" />
                     </div>
                     <Input
                       type="tel"
                       placeholder="Enter phone number"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                      className="border-0 bg-transparent text-lg"
+                      className="border-0 bg-transparent text-lg focus-visible:ring-0"
                     />
                   </div>
 
@@ -165,11 +187,14 @@ const UserLogin = () => {
                     onClick={handlePhoneSubmit}
                     disabled={phone.length < 10 || isLoading}
                     variant="hero"
-                    size="lg"
+                    size="xl"
                     className="w-full"
                   >
                     {isLoading ? (
-                      'Sending...'
+                      <span className="flex items-center gap-2">
+                        <span className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                        Sending...
+                      </span>
                     ) : (
                       <>
                         <Send className="mr-2 h-5 w-5" />
@@ -184,6 +209,9 @@ const UserLogin = () => {
             {step === 'otp' && (
               <div className="space-y-6">
                 <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary shadow-glow">
+                    <KeyRound className="h-8 w-8 text-primary-foreground" />
+                  </div>
                   <h2 className="font-display text-2xl font-bold text-foreground">
                     Enter OTP
                   </h2>
@@ -198,14 +226,13 @@ const UserLogin = () => {
                   Didn't receive code?{' '}
                   <button
                     onClick={handlePhoneSubmit}
-                    className="font-medium text-primary hover:underline"
+                    className="font-semibold text-primary hover:underline transition-colors"
                   >
                     Resend
                   </button>
                 </p>
               </div>
             )}
-
           </div>
         </div>
       </div>

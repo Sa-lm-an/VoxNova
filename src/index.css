@@ -37,14 +37,17 @@
     --radius: 0.75rem;
 
     /* Custom tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(173, 58%, 39%) 0%, hsl(190, 60%, 45%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(210, 20%, 98%) 0%, hsl(190, 30%, 95%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(173, 58%, 39%) 0%, hsl(190, 60%, 45%) 50%, hsl(173, 70%, 35%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(210, 25%, 98%) 0%, hsl(190, 40%, 96%) 50%, hsl(173, 30%, 94%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(210, 20%, 98%) 100%);
     --gradient-success: linear-gradient(135deg, hsl(152, 69%, 40%) 0%, hsl(160, 60%, 45%) 100%);
+    --gradient-glass: linear-gradient(135deg, hsl(0, 0%, 100% / 0.9) 0%, hsl(0, 0%, 100% / 0.7) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(173, 58%, 90%) 0px, transparent 50%), radial-gradient(at 80% 0%, hsl(190, 60%, 88%) 0px, transparent 50%), radial-gradient(at 0% 50%, hsl(45, 93%, 90%) 0px, transparent 50%);
     
     --shadow-card: 0 4px 24px -4px hsl(210 40% 11% / 0.08);
-    --shadow-elevated: 0 12px 40px -8px hsl(210 40% 11% / 0.15);
-    --shadow-glow: 0 0 40px hsl(173 58% 39% / 0.2);
+    --shadow-elevated: 0 20px 50px -12px hsl(210 40% 11% / 0.18);
+    --shadow-glow: 0 0 50px hsl(173 58% 39% / 0.25);
+    --shadow-glass: 0 8px 32px hsl(210 40% 11% / 0.1), inset 0 0 0 1px hsl(0 0% 100% / 0.5);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -109,6 +112,16 @@
 
   .gradient-hero {
     background: var(--gradient-hero);
+    position: relative;
+  }
+
+  .gradient-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-mesh);
+    opacity: 0.6;
+    pointer-events: none;
   }
 
   .gradient-card {
@@ -117,6 +130,10 @@
 
   .gradient-success {
     background: var(--gradient-success);
+  }
+
+  .gradient-glass {
+    background: var(--gradient-glass);
   }
 
   .shadow-card {
@@ -129,6 +146,23 @@
 
   .shadow-glow {
     box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-glass {
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-card {
+    background: hsl(0 0% 100% / 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(0 0% 100% / 0.5);
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-dark {
+    background: hsl(var(--card) / 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border) / 0.5);
   }
 
   .animate-float {
