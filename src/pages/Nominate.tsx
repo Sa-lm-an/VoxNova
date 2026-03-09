@@ -14,7 +14,7 @@ const Nominate = () => {
   const { addNomination } = useVoting();
   const [name, setName] = useState('');
   const [position, setPosition] = useState<Position | ''>('');
-  const [department, setDepartment] = useState(currentUser?.department || '');
+  const [department, setDepartment] = useState('');
   const [image, setImage] = useState('');
   const [documentName, setDocumentName] = useState('');
   const [documentUrl, setDocumentUrl] = useState('');
