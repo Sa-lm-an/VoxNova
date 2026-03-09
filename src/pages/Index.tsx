@@ -55,7 +55,7 @@ const Index = () => {
           </button>
 
           <button
-            onClick={() => navigate('/user-login?action=nominate')}
+            onClick={() => navigate('/nominate')}
             className="group flex flex-col items-center gap-3 rounded-2xl bg-card p-6 shadow-card border border-border/40 transition-all hover:shadow-elevated hover:-translate-y-1 active:scale-[0.98]"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-xl gradient-success shadow-md transition-transform group-hover:scale-110">
@@ -73,7 +73,7 @@ const Index = () => {
               <BarChart3 className="h-7 w-7 text-accent-foreground" />
             </div>
             <span className="font-display text-sm font-semibold text-foreground">Results</span>
-            <span className="text-xs text-muted-foreground text-center">View live election results</span>
+            <span className="text-xs text-muted-foreground text-center">View election results</span>
           </button>
         </div>
       </main>

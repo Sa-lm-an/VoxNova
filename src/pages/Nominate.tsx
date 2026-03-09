@@ -11,16 +11,16 @@ import { Position, POSITIONS } from '@/types/voting';
 
 const Nominate = () => {
   const navigate = useNavigate();
-  const { currentUser, addNomination } = useVoting();
-  const [name, setName] = useState(currentUser?.name || '');
+  const { addNomination } = useVoting();
+  const [name, setName] = useState('');
   const [position, setPosition] = useState<Position | ''>('');
-  const [department, setDepartment] = useState(currentUser?.department || '');
+  const [department, setDepartment] = useState('');
   const [image, setImage] = useState('');
   const [documentName, setDocumentName] = useState('');
   const [documentUrl, setDocumentUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!currentUser) { navigate('/user-login'); return null; }
+  // Nomination doesn't require login - students can apply directly
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -45,8 +45,10 @@ const Nominate = () => {
     }
   };
 
+  const [studentId, setStudentId] = useState('');
+
   const handleSubmit = async () => {
-    if (!name || !position || !department || !documentUrl) {
+    if (!studentId || !name || !position || !department || !documentUrl) {
       toast({ title: 'Missing Fields', description: 'Please fill all fields and upload a document.', variant: 'destructive' });
       return;
     }
@@ -54,7 +56,7 @@ const Nominate = () => {
     await new Promise(r => setTimeout(r, 800));
 
     addNomination({
-      studentId: currentUser.studentId,
+      studentId,
       name,
       position: position as Position,
       department,
@@ -71,8 +73,8 @@ const Nominate = () => {
   return (
     <div className="min-h-screen gradient-hero">
       <div className="container mx-auto px-4 py-8">
-        <button onClick={() => navigate('/vote')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
-          <ArrowLeft className="h-5 w-5" /> Back to Voting
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="h-5 w-5" /> Back to Home
         </button>
 
         <div className="mx-auto mt-8 max-w-lg">
@@ -86,6 +88,11 @@ const Nominate = () => {
             </div>
 
             <div className="space-y-5">
+              <div>
+                <Label>Student ID *</Label>
+                <Input placeholder="Enter your student ID" value={studentId} onChange={e => setStudentId(e.target.value)} className="mt-1" />
+              </div>
+
               <div>
                 <Label>Full Name *</Label>
                 <Input placeholder="Enter your full name" value={name} onChange={e => setName(e.target.value)} className="mt-1" />

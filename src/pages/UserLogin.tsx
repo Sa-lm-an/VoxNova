@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Send, Vote, FileText } from 'lucide-react';
+import { ArrowLeft, Phone, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IdCardScanner } from '@/components/IdCardScanner';
@@ -8,7 +8,7 @@ import { OtpInput } from '@/components/OtpInput';
 import { useVoting } from '@/contexts/VotingContext';
 import { toast } from '@/hooks/use-toast';
 
-type Step = 'scan' | 'phone' | 'otp' | 'choice';
+type Step = 'scan' | 'phone' | 'otp';
 
 const UserLogin = () => {
   const navigate = useNavigate();
@@ -81,11 +81,11 @@ const UserLogin = () => {
         description: 'You have been verified successfully.',
       });
 
-      setStep('choice');
+      navigate('/vote');
     }
   };
 
-  const stepIndex = ['scan', 'phone', 'otp', 'choice'].indexOf(step);
+  const stepIndex = ['scan', 'phone', 'otp'].indexOf(step);
 
   return (
     <div className="min-h-screen gradient-hero">
@@ -95,7 +95,6 @@ const UserLogin = () => {
             if (step === 'scan') navigate('/');
             else if (step === 'phone') setStep('scan');
             else if (step === 'otp') setStep('phone');
-            else if (step === 'choice') setStep('scan');
           }}
           className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
         >
@@ -106,7 +105,7 @@ const UserLogin = () => {
         <div className="mx-auto mt-8 max-w-md">
           {/* Progress Steps */}
           <div className="mb-8 flex items-center justify-center gap-2">
-            {['scan', 'phone', 'otp', 'choice'].map((s, i) => (
+            {['scan', 'phone', 'otp'].map((s, i) => (
               <div
                 key={s}
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all ${
@@ -207,40 +206,6 @@ const UserLogin = () => {
               </div>
             )}
 
-            {step === 'choice' && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h2 className="font-display text-2xl font-bold text-foreground">
-                    What would you like to do?
-                  </h2>
-                  <p className="mt-2 text-muted-foreground">
-                    Choose an action to proceed
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  <Button
-                    onClick={() => navigate('/vote')}
-                    variant="hero"
-                    size="lg"
-                    className="w-full h-20 text-lg"
-                  >
-                    <Vote className="mr-3 h-6 w-6" />
-                    Cast Your Vote
-                  </Button>
-
-                  <Button
-                    onClick={() => navigate('/nominate')}
-                    variant="glass"
-                    size="lg"
-                    className="w-full h-20 text-lg"
-                  >
-                    <FileText className="mr-3 h-6 w-6" />
-                    Apply for Nomination
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
