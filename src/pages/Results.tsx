@@ -1,17 +1,32 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, Users, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Trophy, Users } from 'lucide-react';
 import { useVoting } from '@/contexts/VotingContext';
-import { POSITIONS, Position } from '@/types/voting';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { POSITIONS } from '@/types/voting';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-const COLORS = ['#0d9488', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4'];
 
 const Results = () => {
   const navigate = useNavigate();
-  const { candidates, votedUsers } = useVoting();
+  const { candidates, votingActive, registeredStudents, votedUsers, offlineRecords } = useVoting();
 
-  const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
+  // Check if all registered students have voted (online or offline)
+  const allVoted = registeredStudents.every(s => {
+    const record = offlineRecords.find(r => r.studentId === s.studentId);
+    return votedUsers.includes(s.studentId) || record?.markedOffline;
+  });
+
+  if (votingActive && !allVoted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center gradient-hero">
+        <div className="text-center">
+          <h2 className="font-display text-2xl font-bold text-foreground">Voting Still in Progress</h2>
+          <p className="mt-2 text-muted-foreground">Results will be available after all votes have been cast.</p>
+          <button onClick={() => navigate('/')} className="mt-6 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen gradient-hero pb-8">
@@ -22,22 +37,17 @@ const Results = () => {
 
         <div className="mt-8 text-center">
           <h2 className="font-display text-3xl font-bold text-foreground">Election Results</h2>
-          <p className="mt-2 text-muted-foreground">Live voting statistics across all positions</p>
+          <p className="mt-2 text-muted-foreground">Final results across all positions</p>
         </div>
 
         {/* Stats */}
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="mt-8 grid grid-cols-2 gap-4">
           <div className="rounded-2xl bg-card p-6 shadow-card animate-scale-in">
             <Users className="h-8 w-8 text-primary" />
             <p className="mt-2 font-display text-2xl font-bold text-foreground">{votedUsers.length}</p>
             <p className="text-sm text-muted-foreground">Total Voters</p>
           </div>
           <div className="rounded-2xl bg-card p-6 shadow-card animate-scale-in">
-            <TrendingUp className="h-8 w-8 text-primary" />
-            <p className="mt-2 font-display text-2xl font-bold text-foreground">{totalVotes}</p>
-            <p className="text-sm text-muted-foreground">Total Votes</p>
-          </div>
-          <div className="col-span-2 md:col-span-1 rounded-2xl bg-card p-6 shadow-card animate-scale-in">
             <Trophy className="h-8 w-8 text-accent" />
             <p className="mt-2 font-display text-2xl font-bold text-foreground">{POSITIONS.length}</p>
             <p className="text-sm text-muted-foreground">Positions</p>
@@ -50,55 +60,28 @@ const Results = () => {
           </TabsList>
 
           {POSITIONS.map(pos => {
-            const positionCandidates = candidates.filter(c => c.position === pos);
-            const posVotes = positionCandidates.reduce((sum, c) => sum + c.votes, 0);
-            const sorted = [...positionCandidates].sort((a, b) => b.votes - a.votes);
-            const chartData = positionCandidates.map(c => ({ name: c.name, value: c.votes }));
+            const sorted = [...candidates.filter(c => c.position === pos)].sort((a, b) => b.votes - a.votes);
 
             return (
               <TabsContent key={pos} value={pos}>
-                {/* Chart */}
-                <div className="mt-4 rounded-3xl bg-card p-6 shadow-elevated animate-slide-up">
-                  <h3 className="mb-4 font-display text-lg font-semibold text-foreground">{pos} - Vote Distribution</h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value">
-                          {chartData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Rankings */}
                 <div className="mt-6 space-y-4">
-                  {sorted.map((candidate, index) => {
-                    const percentage = posVotes > 0 ? (candidate.votes / posVotes) * 100 : 0;
-                    return (
-                      <div key={candidate.id} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
-                        <div className={`flex h-10 w-10 items-center justify-center rounded-full font-bold ${index === 0 ? 'gradient-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{index + 1}</div>
-                        <img src={candidate.image} alt={candidate.name} className="h-12 w-12 rounded-full object-cover" />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-foreground">{candidate.name}{index === 0 && <Trophy className="ml-2 inline h-4 w-4 text-accent" />}</p>
-                              <p className="text-sm text-muted-foreground">{candidate.department}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-primary">{candidate.votes}</p>
-                              <p className="text-sm text-muted-foreground">{percentage.toFixed(1)}%</p>
-                            </div>
+                  {sorted.map((candidate, index) => (
+                    <div key={candidate.id} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full font-bold ${index === 0 ? 'gradient-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{index + 1}</div>
+                      <img src={candidate.image} alt={candidate.name} className="h-12 w-12 rounded-full object-cover" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-foreground">{candidate.name}{index === 0 && <Trophy className="ml-2 inline h-4 w-4 text-accent" />}</p>
+                            <p className="text-sm text-muted-foreground">{candidate.department}</p>
                           </div>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                            <div className="h-full gradient-primary transition-all duration-500" style={{ width: `${percentage}%` }} />
+                          <div className="text-right">
+                            <p className="font-bold text-primary">{candidate.votes} votes</p>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </TabsContent>
             );

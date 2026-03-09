@@ -70,7 +70,6 @@ const Vote = () => {
             <h2 className="font-display text-3xl font-bold text-foreground">Thank You!</h2>
             <p className="mt-2 text-lg text-muted-foreground">Your votes have been recorded successfully.</p>
             <div className="mt-8 flex flex-col gap-4">
-              <Button onClick={() => navigate('/results')} variant="hero" size="lg">View Results</Button>
               <Button onClick={handleLogout} variant="glass" size="lg"><LogOut className="mr-2 h-5 w-5" />Logout</Button>
             </div>
           </div>

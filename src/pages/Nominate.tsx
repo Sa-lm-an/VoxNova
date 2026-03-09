@@ -65,7 +65,7 @@ const Nominate = () => {
 
     toast({ title: 'Nomination Submitted!', description: 'Your nomination is pending admin approval.' });
     setIsSubmitting(false);
-    navigate('/vote');
+    navigate('/');
   };
 
   return (
