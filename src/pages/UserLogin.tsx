@@ -81,7 +81,7 @@ const UserLogin = () => {
         description: 'You have been verified successfully.',
       });
 
-      setStep('choice');
+      navigate('/vote');
     }
   };
 
