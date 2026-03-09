@@ -85,7 +85,7 @@ const UserLogin = () => {
     }
   };
 
-  const stepIndex = ['scan', 'phone', 'otp', 'choice'].indexOf(step);
+  const stepIndex = ['scan', 'phone', 'otp'].indexOf(step);
 
   return (
     <div className="min-h-screen gradient-hero">
