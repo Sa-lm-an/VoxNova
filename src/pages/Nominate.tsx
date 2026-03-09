@@ -89,6 +89,11 @@ const Nominate = () => {
 
             <div className="space-y-5">
               <div>
+                <Label>Student ID *</Label>
+                <Input placeholder="Enter your student ID" value={studentId} onChange={e => setStudentId(e.target.value)} className="mt-1" />
+              </div>
+
+              <div>
                 <Label>Full Name *</Label>
                 <Input placeholder="Enter your full name" value={name} onChange={e => setName(e.target.value)} className="mt-1" />
               </div>
