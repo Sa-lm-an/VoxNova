@@ -45,8 +45,10 @@ const Nominate = () => {
     }
   };
 
+  const [studentId, setStudentId] = useState('');
+
   const handleSubmit = async () => {
-    if (!name || !position || !department || !documentUrl) {
+    if (!studentId || !name || !position || !department || !documentUrl) {
       toast({ title: 'Missing Fields', description: 'Please fill all fields and upload a document.', variant: 'destructive' });
       return;
     }
@@ -54,7 +56,7 @@ const Nominate = () => {
     await new Promise(r => setTimeout(r, 800));
 
     addNomination({
-      studentId: currentUser.studentId,
+      studentId,
       name,
       position: position as Position,
       department,
