@@ -73,8 +73,8 @@ const Nominate = () => {
   return (
     <div className="min-h-screen gradient-hero">
       <div className="container mx-auto px-4 py-8">
-        <button onClick={() => navigate('/vote')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
-          <ArrowLeft className="h-5 w-5" /> Back to Voting
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="h-5 w-5" /> Back to Home
         </button>
 
         <div className="mx-auto mt-8 max-w-lg">
