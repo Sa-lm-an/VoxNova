@@ -206,40 +206,6 @@ const UserLogin = () => {
               </div>
             )}
 
-            {step === 'choice' && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h2 className="font-display text-2xl font-bold text-foreground">
-                    What would you like to do?
-                  </h2>
-                  <p className="mt-2 text-muted-foreground">
-                    Choose an action to proceed
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  <Button
-                    onClick={() => navigate('/vote')}
-                    variant="hero"
-                    size="lg"
-                    className="w-full h-20 text-lg"
-                  >
-                    <Vote className="mr-3 h-6 w-6" />
-                    Cast Your Vote
-                  </Button>
-
-                  <Button
-                    onClick={() => navigate('/nominate')}
-                    variant="glass"
-                    size="lg"
-                    className="w-full h-20 text-lg"
-                  >
-                    <FileText className="mr-3 h-6 w-6" />
-                    Apply for Nomination
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

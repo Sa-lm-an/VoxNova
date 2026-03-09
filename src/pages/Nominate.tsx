@@ -20,7 +20,7 @@ const Nominate = () => {
   const [documentUrl, setDocumentUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!currentUser) { navigate('/user-login'); return null; }
+  // Nomination doesn't require login - students can apply directly
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
