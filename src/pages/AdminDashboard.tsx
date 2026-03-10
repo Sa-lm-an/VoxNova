@@ -263,6 +263,7 @@ const AdminDashboard = () => {
                         <TableCell className="font-medium text-foreground">{student.studentId}</TableCell>
                         <TableCell className="text-foreground">{student.name}</TableCell>
                         <TableCell className="text-muted-foreground">{student.department}</TableCell>
+                        <TableCell className="text-muted-foreground">{student.phone}</TableCell>
                         <TableCell>
                           {votedUsers.includes(student.studentId) ? (
                             <Badge variant="default">Voted</Badge>
