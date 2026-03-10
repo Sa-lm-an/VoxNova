@@ -27,7 +27,10 @@ const AdminDashboard = () => {
   } = useVoting();
 
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
-  const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '' });
+  const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '', phone: '' });
+  const [activeTab, setActiveTab] = useState('candidates');
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('candidates');
   const csvInputRef = useRef<HTMLInputElement>(null);
 
