@@ -37,7 +37,9 @@ export interface RegisteredStudent {
   studentId: string;
   name: string;
   department: string;
+  phone: string;
 }
+
 
 export interface OfflineVoteRecord {
   studentId: string;
