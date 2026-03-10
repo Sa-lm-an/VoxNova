@@ -31,8 +31,6 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('candidates');
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('candidates');
-  const csvInputRef = useRef<HTMLInputElement>(null);
 
   if (!isAdmin) { navigate('/admin-login'); return null; }
 
