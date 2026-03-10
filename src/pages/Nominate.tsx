@@ -57,7 +57,7 @@ const Nominate = () => {
       name,
       position: position as Position,
       department,
-      image: image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+      image,
       documentUrl,
       documentName,
     });
