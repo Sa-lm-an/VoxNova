@@ -27,9 +27,10 @@ const AdminDashboard = () => {
   } = useVoting();
 
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
-  const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '' });
+  const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '', phone: '' });
   const [activeTab, setActiveTab] = useState('candidates');
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   if (!isAdmin) { navigate('/admin-login'); return null; }
 
@@ -39,7 +40,7 @@ const AdminDashboard = () => {
   };
 
   const handleAddStudent = () => {
-    if (!newStudent.studentId || !newStudent.name || !newStudent.department) {
+    if (!newStudent.studentId || !newStudent.name || !newStudent.department || !newStudent.phone) {
       toast({ title: 'Missing Fields', description: 'Please fill in all fields.', variant: 'destructive' });
       return;
     }
@@ -49,7 +50,7 @@ const AdminDashboard = () => {
     }
     addStudent(newStudent);
     toast({ title: 'Student Added', description: `${newStudent.name} has been added to the voter list.` });
-    setNewStudent({ studentId: '', name: '', department: '' });
+    setNewStudent({ studentId: '', name: '', department: '', phone: '' });
     setStudentDialogOpen(false);
   };
 
@@ -68,13 +69,13 @@ const AdminDashboard = () => {
       const students = [];
       for (let i = startIndex; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        if (cols.length >= 3 && cols[0] && cols[1] && cols[2]) {
-          students.push({ studentId: cols[0], name: cols[1], department: cols[2] });
+        if (cols.length >= 4 && cols[0] && cols[1] && cols[2] && cols[3]) {
+          students.push({ studentId: cols[0], name: cols[1], department: cols[2], phone: cols[3] });
         }
       }
 
       if (students.length === 0) {
-        toast({ title: 'No Data Found', description: 'CSV must have columns: StudentID, Name, Department', variant: 'destructive' });
+        toast({ title: 'No Data Found', description: 'CSV must have columns: StudentID, Name, Department, Phone', variant: 'destructive' });
         return;
       }
 
@@ -227,6 +228,7 @@ const AdminDashboard = () => {
                         <Input placeholder="Student ID *" value={newStudent.studentId} onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })} />
                         <Input placeholder="Full Name *" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
                         <Input placeholder="Department *" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })} />
+                        <Input placeholder="Phone Number *" value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
                         <Button onClick={handleAddStudent} variant="hero" className="w-full">Add Student</Button>
                       </div>
                     </DialogContent>
@@ -236,20 +238,21 @@ const AdminDashboard = () => {
 
               <div className="rounded-xl bg-card/60 border border-border/40 p-4 mb-4">
                 <p className="text-xs text-muted-foreground">
-                  <strong>CSV Format:</strong> StudentID, Name, Department (one per row). Header row is optional.
+                  <strong>CSV Format:</strong> StudentID, Name, Department, Phone (one per row). Header row is optional.
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Example: <code className="bg-muted px-1 rounded">STU009,John Doe,Computer Science</code>
+                  Example: <code className="bg-muted px-1 rounded">STU009,John Doe,Computer Science,9876543210</code>
                 </p>
               </div>
 
               <div className="rounded-2xl bg-card shadow-card overflow-hidden">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                     <TableRow>
                       <TableHead>Student ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Department</TableHead>
+                      <TableHead>Phone</TableHead>
                       <TableHead>Vote Status</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
@@ -260,6 +263,7 @@ const AdminDashboard = () => {
                         <TableCell className="font-medium text-foreground">{student.studentId}</TableCell>
                         <TableCell className="text-foreground">{student.name}</TableCell>
                         <TableCell className="text-muted-foreground">{student.department}</TableCell>
+                        <TableCell className="text-muted-foreground">{student.phone}</TableCell>
                         <TableCell>
                           {votedUsers.includes(student.studentId) ? (
                             <Badge variant="default">Voted</Badge>
@@ -288,7 +292,7 @@ const AdminDashboard = () => {
                     ))}
                     {registeredStudents.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No students registered yet.</TableCell>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No students registered yet.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -303,33 +307,53 @@ const AdminDashboard = () => {
                 <p className="text-center text-muted-foreground py-8">No nominations submitted yet.</p>
               ) : (
                 nominations.map(nom => (
-                  <div key={nom.id} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
-                    <img src={nom.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${nom.name}`} alt={nom.name} className="h-16 w-16 rounded-xl object-cover" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground">{nom.name}</p>
-                        <Badge variant={nom.status === 'approved' ? 'default' : nom.status === 'rejected' ? 'destructive' : 'secondary'}>
-                          {nom.status}
-                        </Badge>
+                  <div key={nom.id} className="rounded-2xl bg-card p-5 shadow-card space-y-3">
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={nom.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${nom.name}`}
+                        alt={nom.name}
+                        className="h-16 w-16 rounded-xl object-cover cursor-pointer ring-2 ring-border/30 hover:ring-primary/50 transition-all"
+                        onClick={() => setViewingImage(nom.image)}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground">{nom.name}</p>
+                          <Badge variant={nom.status === 'approved' ? 'default' : nom.status === 'rejected' ? 'destructive' : 'secondary'}>
+                            {nom.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{nom.position} • {nom.department}</p>
+                        <p className="text-xs text-muted-foreground">ID: {nom.studentId} • Submitted: {new Date(nom.submittedAt).toLocaleDateString()}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">{nom.position} • {nom.department}</p>
-                      <p className="text-xs text-muted-foreground">ID: {nom.studentId} • Submitted: {new Date(nom.submittedAt).toLocaleDateString()}</p>
+                      {nom.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button variant="hero" size="sm" onClick={() => handleNomination(nom.id, 'approved')}>
+                            <FileCheck className="mr-1 h-4 w-4" /> Approve
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleNomination(nom.id, 'rejected')}>
+                            <FileX className="mr-1 h-4 w-4" /> Reject
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {nom.documentName && (
-                      <a href={nom.documentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
-                        <Eye className="h-3 w-3" /> {nom.documentName}
-                      </a>
-                    )}
-                    {nom.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button variant="hero" size="sm" onClick={() => handleNomination(nom.id, 'approved')}>
-                          <FileCheck className="mr-1 h-4 w-4" /> Approve
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleNomination(nom.id, 'rejected')}>
-                          <FileX className="mr-1 h-4 w-4" /> Reject
-                        </Button>
-                      </div>
-                    )}
+                    {/* Documents section */}
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border/30">
+                      {nom.applicationFormName && (
+                        <button onClick={() => setViewingImage(nom.applicationFormUrl)} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                          <Eye className="h-3 w-3" /> Application Form
+                        </button>
+                      )}
+                      {nom.marklistName && (
+                        <button onClick={() => setViewingImage(nom.marklistUrl)} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                          <Eye className="h-3 w-3" /> Marklist
+                        </button>
+                      )}
+                      {nom.photoName && (
+                        <button onClick={() => setViewingImage(nom.photoUrl)} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                          <Eye className="h-3 w-3" /> Photo Document
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -337,6 +361,20 @@ const AdminDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Enlarged Image/Document Viewer */}
+      <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] p-2">
+          <DialogHeader><DialogTitle>Document Preview</DialogTitle></DialogHeader>
+          {viewingImage && (
+            viewingImage.startsWith('data:application/pdf') ? (
+              <iframe src={viewingImage} className="w-full h-[75vh] rounded-lg" title="Document" />
+            ) : (
+              <img src={viewingImage} alt="Enlarged preview" className="w-full h-auto max-h-[75vh] object-contain rounded-lg" />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

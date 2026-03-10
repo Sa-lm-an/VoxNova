@@ -176,6 +176,7 @@ const ControllerDashboard = () => {
                 <TableHead className="cursor-pointer" onClick={() => toggleSort('department')}>
                   Department <ArrowUpDown className="inline h-3 w-3 ml-1" />
                 </TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
                   Status <ArrowUpDown className="inline h-3 w-3 ml-1" />
                 </TableHead>
@@ -197,6 +198,7 @@ const ControllerDashboard = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{record.department}</TableCell>
+                  <TableCell className="text-muted-foreground">{record.phone}</TableCell>
                   <TableCell>
                     {record.votedOnline ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -229,7 +231,7 @@ const ControllerDashboard = () => {
               ))}
               {filteredRecords.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No students found.</TableCell>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No students found.</TableCell>
                 </TableRow>
               )}
             </TableBody>

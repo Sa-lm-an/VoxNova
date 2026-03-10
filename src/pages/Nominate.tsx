@@ -16,21 +16,26 @@ const Nominate = () => {
   const [position, setPosition] = useState<Position | ''>('');
   const [department, setDepartment] = useState('');
   const [image, setImage] = useState('');
-  const [documentName, setDocumentName] = useState('');
-  const [documentUrl, setDocumentUrl] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [studentId, setStudentId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Three document states
+  const [applicationForm, setApplicationForm] = useState<{ name: string; url: string }>({ name: '', url: '' });
+  const [marklist, setMarklist] = useState<{ name: string; url: string }>({ name: '', url: '' });
+  const [photo, setPhoto] = useState<{ name: string; url: string }>({ name: '', url: '' });
+
+  const handleFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (val: { name: string; url: string }) => void
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
         toast({ title: 'File too large', description: 'Maximum file size is 5MB.', variant: 'destructive' });
         return;
       }
-      setDocumentName(file.name);
       const reader = new FileReader();
-      reader.onloadend = () => setDocumentUrl(reader.result as string);
+      reader.onloadend = () => setter({ name: file.name, url: reader.result as string });
       reader.readAsDataURL(file);
     }
   };
@@ -45,8 +50,8 @@ const Nominate = () => {
   };
 
   const handleSubmit = async () => {
-    if (!studentId || !name || !position || !department || !image || !documentUrl) {
-      toast({ title: 'Missing Fields', description: 'Please fill all fields, upload your photo and supporting document.', variant: 'destructive' });
+    if (!studentId || !name || !position || !department || !image || !applicationForm.url || !marklist.url || !photo.url) {
+      toast({ title: 'Missing Fields', description: 'Please fill all fields and upload your photo + all 3 supporting documents.', variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);
@@ -58,14 +63,38 @@ const Nominate = () => {
       position: position as Position,
       department,
       image,
-      documentUrl,
-      documentName,
+      applicationFormUrl: applicationForm.url,
+      applicationFormName: applicationForm.name,
+      marklistUrl: marklist.url,
+      marklistName: marklist.name,
+      photoUrl: photo.url,
+      photoName: photo.name,
     });
 
     toast({ title: 'Nomination Submitted!', description: 'Your nomination is pending admin approval.' });
     setIsSubmitting(false);
     navigate('/');
   };
+
+  const DocumentUpload = ({ label, doc, onChange }: { label: string; doc: { name: string; url: string }; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-2 text-sm font-medium">
+        <FileUp className="h-4 w-4 text-muted-foreground" /> {label} *
+      </Label>
+      <label className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-border/50 bg-background/30 p-4 text-sm transition-all hover:border-primary hover:bg-primary/5 group">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${doc.name ? 'bg-green-500/20' : 'bg-muted'}`}>
+          <FileUp className={`h-5 w-5 ${doc.name ? 'text-green-600' : 'text-muted-foreground group-hover:text-primary'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`truncate ${doc.name ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+            {doc.name || 'Click to upload'}
+          </p>
+          {!doc.name && <p className="text-xs text-muted-foreground mt-0.5">PDF or Image, max 5MB</p>}
+        </div>
+        <input type="file" accept=".pdf,image/*" onChange={onChange} className="hidden" />
+      </label>
+    </div>
+  );
 
   return (
     <div className="min-h-screen gradient-hero relative overflow-hidden">
@@ -92,24 +121,14 @@ const Nominate = () => {
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <User className="h-4 w-4 text-muted-foreground" /> Student ID *
                 </Label>
-                <Input 
-                  placeholder="Enter your student ID" 
-                  value={studentId} 
-                  onChange={e => setStudentId(e.target.value)} 
-                  className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors"
-                />
+                <Input placeholder="Enter your student ID" value={studentId} onChange={e => setStudentId(e.target.value)} className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors" />
               </div>
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <User className="h-4 w-4 text-muted-foreground" /> Full Name *
                 </Label>
-                <Input 
-                  placeholder="Enter your full name" 
-                  value={name} 
-                  onChange={e => setName(e.target.value)} 
-                  className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors"
-                />
+                <Input placeholder="Enter your full name" value={name} onChange={e => setName(e.target.value)} className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors" />
               </div>
 
               <div className="space-y-2">
@@ -130,14 +149,10 @@ const Nominate = () => {
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <Building className="h-4 w-4 text-muted-foreground" /> Department *
                 </Label>
-                <Input 
-                  placeholder="e.g., Computer Science" 
-                  value={department} 
-                  onChange={e => setDepartment(e.target.value)} 
-                  className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors"
-                />
+                <Input placeholder="e.g., Computer Science" value={department} onChange={e => setDepartment(e.target.value)} className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors" />
               </div>
 
+              {/* Candidate Photo */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <Image className="h-4 w-4 text-muted-foreground" /> Your Photo *
@@ -149,47 +164,31 @@ const Nominate = () => {
                     </div>
                   )}
                   <label className="flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/50 bg-background/30 px-4 py-4 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/5 hover:text-primary">
-                    <Upload className="h-5 w-5" /> 
+                    <Upload className="h-5 w-5" />
                     <span>{image ? 'Change Photo' : 'Upload Photo'}</span>
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                   </label>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-sm font-medium">
-                  <FileUp className="h-4 w-4 text-muted-foreground" /> Supporting Document * (Application Form, Marklist, etc.)
-                </Label>
-                <label className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-border/50 bg-background/30 p-5 text-sm transition-all hover:border-primary hover:bg-primary/5 group">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors ${documentName ? 'bg-green-500/20' : 'bg-muted'}`}>
-                    <FileUp className={`h-6 w-6 ${documentName ? 'text-green-600' : 'text-muted-foreground group-hover:text-primary'}`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className={documentName ? 'font-semibold text-foreground' : 'text-muted-foreground'}>
-                      {documentName || 'Click to upload document'}
-                    </p>
-                    {!documentName && <p className="text-xs text-muted-foreground mt-1">Max 5MB</p>}
-                  </div>
-                  <input type="file" accept=".pdf,image/*" onChange={handleFileUpload} className="hidden" />
-                </label>
+              {/* Three Supporting Documents */}
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">Supporting Documents</p>
+                <p className="text-xs text-muted-foreground mb-3">Upload all three documents below</p>
               </div>
 
-              <Button 
-                onClick={handleSubmit} 
-                disabled={isSubmitting} 
-                variant="hero" 
-                size="xl" 
-                className="w-full mt-6"
-              >
+              <DocumentUpload label="Application Form" doc={applicationForm} onChange={e => handleFileUpload(e, setApplicationForm)} />
+              <DocumentUpload label="Marklist" doc={marklist} onChange={e => handleFileUpload(e, setMarklist)} />
+              <DocumentUpload label="Photo Document" doc={photo} onChange={e => handleFileUpload(e, setPhoto)} />
+
+              <Button onClick={handleSubmit} disabled={isSubmitting} variant="hero" size="xl" className="w-full mt-6">
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
                     <span className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                     Submitting...
                   </span>
                 ) : (
-                  <>
-                    <Send className="mr-2 h-5 w-5" /> Submit Nomination
-                  </>
+                  <><Send className="mr-2 h-5 w-5" /> Submit Nomination</>
                 )}
               </Button>
             </div>

@@ -27,22 +27,30 @@ export interface Nomination {
   position: Position;
   department: string;
   image: string;
-  documentUrl: string;
-  documentName: string;
+  applicationFormUrl: string;
+  applicationFormName: string;
+  marklistUrl: string;
+  marklistName: string;
+  photoUrl: string;
+  photoName: string;
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: string;
 }
+
 
 export interface RegisteredStudent {
   studentId: string;
   name: string;
   department: string;
+  phone: string;
 }
+
 
 export interface OfflineVoteRecord {
   studentId: string;
   studentName: string;
   department: string;
+  phone: string;
   votedOnline: boolean;
   markedOffline: boolean;
   markedAt?: string;
