@@ -198,6 +198,7 @@ const ControllerDashboard = () => {
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{record.department}</TableCell>
+                  <TableCell className="text-muted-foreground">{record.phone}</TableCell>
                   <TableCell>
                     {record.votedOnline ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
