@@ -140,7 +140,7 @@ const Nominate = () => {
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
-                  <Image className="h-4 w-4 text-muted-foreground" /> Your Photo (optional)
+                  <Image className="h-4 w-4 text-muted-foreground" /> Your Photo *
                 </Label>
                 <div className="flex items-center gap-4">
                   {image && (
