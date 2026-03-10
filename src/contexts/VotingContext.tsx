@@ -54,6 +54,7 @@ const initialOfflineRecords: OfflineVoteRecord[] = initialStudents.map(s => ({
   studentId: s.studentId,
   studentName: s.name,
   department: s.department,
+  phone: s.phone,
   votedOnline: false,
   markedOffline: false,
 }));

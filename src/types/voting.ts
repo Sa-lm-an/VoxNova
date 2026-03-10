@@ -50,6 +50,7 @@ export interface OfflineVoteRecord {
   studentId: string;
   studentName: string;
   department: string;
+  phone: string;
   votedOnline: boolean;
   markedOffline: boolean;
   markedAt?: string;
