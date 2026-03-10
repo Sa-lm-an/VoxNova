@@ -1,12 +1,22 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Search, Filter, CheckCircle2, Circle, Globe, Users, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, LogOut, Search, Filter, CheckCircle2, Circle, Globe, Users, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useVoting } from '@/contexts/VotingContext';
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const ControllerDashboard = () => {
   const navigate = useNavigate();
@@ -17,6 +27,7 @@ const ControllerDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'name' | 'department' | 'status'>('name');
   const [sortAsc, setSortAsc] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ studentId: string; studentName: string; action: 'mark' | 'unmark' } | null>(null);
 
   const departments = useMemo(() => [...new Set(offlineRecords.map(r => r.department))], [offlineRecords]);
 
@@ -61,18 +72,24 @@ const ControllerDashboard = () => {
 
   if (!isController) { navigate('/controller-login'); return null; }
 
-  const handleToggle = (studentId: string, currentlyMarked: boolean, votedOnline: boolean) => {
+  const handleToggle = (studentId: string, studentName: string, currentlyMarked: boolean, votedOnline: boolean) => {
     if (votedOnline) {
       toast({ title: 'Cannot Mark', description: 'This student has already voted online.', variant: 'destructive' });
       return;
     }
-    if (currentlyMarked) {
-      unmarkOfflineVote(studentId);
-      toast({ title: 'Unmarked', description: 'Offline vote marking removed.' });
+    setConfirmAction({ studentId, studentName, action: currentlyMarked ? 'unmark' : 'mark' });
+  };
+
+  const handleConfirm = () => {
+    if (!confirmAction) return;
+    if (confirmAction.action === 'mark') {
+      markOfflineVote(confirmAction.studentId, 'Controller');
+      toast({ title: 'Marked', description: `${confirmAction.studentName} marked as voted offline.` });
     } else {
-      markOfflineVote(studentId, 'Controller');
-      toast({ title: 'Marked', description: 'Student marked as voted offline.' });
+      unmarkOfflineVote(confirmAction.studentId);
+      toast({ title: 'Unmarked', description: `Offline vote marking removed for ${confirmAction.studentName}.` });
     }
+    setConfirmAction(null);
   };
 
   const handleLogout = () => { setIsController(false); navigate('/'); };
@@ -152,6 +169,7 @@ const ControllerDashboard = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[60px] text-center">No.</TableHead>
                 <TableHead className="cursor-pointer" onClick={() => toggleSort('name')}>
                   Student <ArrowUpDown className="inline h-3 w-3 ml-1" />
                 </TableHead>
@@ -165,8 +183,13 @@ const ControllerDashboard = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRecords.map(record => (
+              {filteredRecords.map((record, index) => (
                 <TableRow key={record.studentId}>
+                  <TableCell className="text-center">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                      {index + 1}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium text-foreground">{record.studentName}</p>
@@ -196,7 +219,7 @@ const ControllerDashboard = () => {
                       <Button
                         variant={record.markedOffline ? 'destructive' : 'hero'}
                         size="sm"
-                        onClick={() => handleToggle(record.studentId, record.markedOffline, record.votedOnline)}
+                        onClick={() => handleToggle(record.studentId, record.studentName, record.markedOffline, record.votedOnline)}
                       >
                         {record.markedOffline ? 'Unmark' : 'Mark Voted'}
                       </Button>
@@ -206,13 +229,38 @@ const ControllerDashboard = () => {
               ))}
               {filteredRecords.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">No students found.</TableCell>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">No students found.</TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <AlertTriangle className="h-6 w-6 text-primary" />
+            </div>
+            <AlertDialogTitle className="text-center">
+              {confirmAction?.action === 'mark' ? 'Confirm Offline Vote' : 'Remove Offline Mark'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              {confirmAction?.action === 'mark'
+                ? `Are you sure you want to mark "${confirmAction?.studentName}" as voted offline? This action records their vote.`
+                : `Are you sure you want to remove the offline vote mark for "${confirmAction?.studentName}"?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center gap-3">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} className="rounded-xl">
+              {confirmAction?.action === 'mark' ? 'Yes, Mark Voted' : 'Yes, Unmark'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
