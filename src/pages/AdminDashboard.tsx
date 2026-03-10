@@ -69,8 +69,8 @@ const AdminDashboard = () => {
       const students = [];
       for (let i = startIndex; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        if (cols.length >= 3 && cols[0] && cols[1] && cols[2]) {
-          students.push({ studentId: cols[0], name: cols[1], department: cols[2] });
+        if (cols.length >= 4 && cols[0] && cols[1] && cols[2] && cols[3]) {
+          students.push({ studentId: cols[0], name: cols[1], department: cols[2], phone: cols[3] });
         }
       }
 
