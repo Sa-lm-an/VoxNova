@@ -228,6 +228,7 @@ const AdminDashboard = () => {
                         <Input placeholder="Student ID *" value={newStudent.studentId} onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })} />
                         <Input placeholder="Full Name *" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
                         <Input placeholder="Department *" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })} />
+                        <Input placeholder="Phone Number *" value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
                         <Button onClick={handleAddStudent} variant="hero" className="w-full">Add Student</Button>
                       </div>
                     </DialogContent>
