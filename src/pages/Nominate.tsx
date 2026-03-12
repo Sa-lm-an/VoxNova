@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Send, FileText, User, Building, Image, FileUp } from 'lucide-react';
+import { ArrowLeft, Send, FileText, User, Building, Image, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,64 +11,56 @@ import { Position, POSITIONS } from '@/types/voting';
 
 const Nominate = () => {
   const navigate = useNavigate();
-  const { addNomination } = useVoting();
-  const [name, setName] = useState('');
+  const { addNomination, currentUser, electionPhase } = useVoting();
   const [position, setPosition] = useState<Position | ''>('');
-  const [department, setDepartment] = useState('');
-  const [image, setImage] = useState('');
-  const [studentId, setStudentId] = useState('');
+  const [party, setParty] = useState('');
+  const [applicationForm, setApplicationForm] = useState<{ url: string; name: string } | null>(null);
+  const [marklist, setMarklist] = useState<{ url: string; name: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Three document states
-  const [applicationForm, setApplicationForm] = useState<{ name: string; url: string }>({ name: '', url: '' });
-  const [marklist, setMarklist] = useState<{ name: string; url: string }>({ name: '', url: '' });
-  const [photo, setPhoto] = useState<{ name: string; url: string }>({ name: '', url: '' });
-
-  const handleFileUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setter: (val: { name: string; url: string }) => void
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: 'File too large', description: 'Maximum file size is 5MB.', variant: 'destructive' });
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => setter({ name: file.name, url: reader.result as string });
-      reader.readAsDataURL(file);
+  useEffect(() => {
+    if (electionPhase !== 'nomination') {
+      toast({ title: 'Nominations Closed', description: 'The nomination phase is currently not active.', variant: 'destructive' });
+      navigate('/');
+      return;
     }
-  };
+    if (!currentUser) {
+      toast({ title: 'Authentication Required', description: 'Please login to submit a nomination', variant: 'destructive' });
+      navigate('/user-login');
+    }
+  }, [currentUser, navigate, electionPhase]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (!currentUser) return null;
+
+  if (!currentUser) return null;
+
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<{ url: string; name: string } | null>>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setImage(reader.result as string);
+      reader.onloadend = () => setter({ url: reader.result as string, name: file.name });
       reader.readAsDataURL(file);
     }
   };
 
   const handleSubmit = async () => {
-    if (!studentId || !name || !position || !department || !image || !applicationForm.url || !marklist.url || !photo.url) {
-      toast({ title: 'Missing Fields', description: 'Please fill all fields and upload your photo + all 3 supporting documents.', variant: 'destructive' });
+    if (!position || !party || !applicationForm || !marklist) {
+      toast({ title: 'Missing Fields', description: 'Please fill all required fields and upload all documents.', variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);
     await new Promise(r => setTimeout(r, 800));
 
     addNomination({
-      studentId,
-      name,
+      studentId: currentUser.studentId,
+      name: currentUser.name,
       position: position as Position,
-      department,
-      image,
+      department: currentUser.department,
+      party,
       applicationFormUrl: applicationForm.url,
       applicationFormName: applicationForm.name,
       marklistUrl: marklist.url,
       marklistName: marklist.name,
-      photoUrl: photo.url,
-      photoName: photo.name,
     });
 
     toast({ title: 'Nomination Submitted!', description: 'Your nomination is pending admin approval.' });
@@ -76,34 +68,14 @@ const Nominate = () => {
     navigate('/');
   };
 
-  const DocumentUpload = ({ label, doc, onChange }: { label: string; doc: { name: string; url: string }; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-    <div className="space-y-2">
-      <Label className="flex items-center gap-2 text-sm font-medium">
-        <FileUp className="h-4 w-4 text-muted-foreground" /> {label} *
-      </Label>
-      <label className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-border/50 bg-background/30 p-4 text-sm transition-all hover:border-primary hover:bg-primary/5 group">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${doc.name ? 'bg-green-500/20' : 'bg-muted'}`}>
-          <FileUp className={`h-5 w-5 ${doc.name ? 'text-green-600' : 'text-muted-foreground group-hover:text-primary'}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className={`truncate ${doc.name ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-            {doc.name || 'Click to upload'}
-          </p>
-          {!doc.name && <p className="text-xs text-muted-foreground mt-0.5">PDF or Image, max 5MB</p>}
-        </div>
-        <input type="file" accept=".pdf,image/*" onChange={onChange} className="hidden" />
-      </label>
-    </div>
-  );
-
   return (
     <div className="min-h-screen gradient-hero relative overflow-hidden">
       <div className="absolute top-0 left-0 w-80 h-80 bg-green-500/10 rounded-full blur-3xl -translate-y-1/2" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl translate-y-1/2" />
-      
+
       <div className="container mx-auto px-4 py-8 relative z-10">
-        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground group">
-          <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" /> Back to Home
+        <button onClick={() => navigate(-1 as any)} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground group">
+          <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" /> Back
         </button>
 
         <div className="mx-auto mt-8 max-w-lg">
@@ -116,21 +88,21 @@ const Nominate = () => {
               <p className="mt-2 text-muted-foreground">Submit your candidacy for the election</p>
             </div>
 
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-sm font-medium">
-                  <User className="h-4 w-4 text-muted-foreground" /> Student ID *
-                </Label>
-                <Input placeholder="Enter your student ID" value={studentId} onChange={e => setStudentId(e.target.value)} className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors" />
+            <div className="space-y-6">
+              {/* Readonly Logged-in info */}
+              <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">{currentUser.name}</span>
+                  <span className="text-muted-foreground">({currentUser.studentId})</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">{currentUser.department}</span>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-sm font-medium">
-                  <User className="h-4 w-4 text-muted-foreground" /> Full Name *
-                </Label>
-                <Input placeholder="Enter your full name" value={name} onChange={e => setName(e.target.value)} className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors" />
-              </div>
-
+              {/* Position */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <FileText className="h-4 w-4 text-muted-foreground" /> Position *
@@ -145,41 +117,35 @@ const Nominate = () => {
                 </Select>
               </div>
 
+              {/* Party */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
-                  <Building className="h-4 w-4 text-muted-foreground" /> Department *
+                  <Flag className="h-4 w-4 text-muted-foreground" /> Party / Alliance *
                 </Label>
-                <Input placeholder="e.g., Computer Science" value={department} onChange={e => setDepartment(e.target.value)} className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors" />
+                <Input placeholder="e.g., Students United Front" value={party} onChange={e => setParty(e.target.value)} className="rounded-xl bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary transition-colors" />
               </div>
 
-              {/* Candidate Photo */}
+              {/* Application Form */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
-                  <Image className="h-4 w-4 text-muted-foreground" /> Your Photo *
+                  <FileText className="h-4 w-4 text-muted-foreground" /> Application Form (PDF/Image) *
                 </Label>
-                <div className="flex items-center gap-4">
-                  {image && (
-                    <div className="relative">
-                      <img src={image} alt="Preview" className="h-16 w-16 rounded-xl object-cover ring-2 ring-primary/30" />
-                    </div>
-                  )}
-                  <label className="flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/50 bg-background/30 px-4 py-4 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/5 hover:text-primary">
-                    <Upload className="h-5 w-5" />
-                    <span>{image ? 'Change Photo' : 'Upload Photo'}</span>
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  </label>
-                </div>
+                <label className="flex w-full cursor-pointer items-center justify-between rounded-xl border-2 border-dashed border-border/50 bg-background/30 px-4 py-3 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/5">
+                  <span className="truncate">{applicationForm ? applicationForm.name : 'Upload Application Form'}</span>
+                  <input type="file" accept=".pdf,image/*" onChange={(e) => handleDocumentUpload(e, setApplicationForm)} className="hidden" />
+                </label>
               </div>
 
-              {/* Three Supporting Documents */}
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-foreground">Supporting Documents</p>
-                <p className="text-xs text-muted-foreground mb-3">Upload all three documents below</p>
+              {/* Marklist */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <FileText className="h-4 w-4 text-muted-foreground" /> Previous Semester Marklist *
+                </Label>
+                <label className="flex w-full cursor-pointer items-center justify-between rounded-xl border-2 border-dashed border-border/50 bg-background/30 px-4 py-3 text-sm text-muted-foreground transition-all hover:border-primary hover:bg-primary/5">
+                  <span className="truncate">{marklist ? marklist.name : 'Upload Marklist'}</span>
+                  <input type="file" accept=".pdf,image/*" onChange={(e) => handleDocumentUpload(e, setMarklist)} className="hidden" />
+                </label>
               </div>
-
-              <DocumentUpload label="Application Form" doc={applicationForm} onChange={e => handleFileUpload(e, setApplicationForm)} />
-              <DocumentUpload label="Marklist" doc={marklist} onChange={e => handleFileUpload(e, setMarklist)} />
-              <DocumentUpload label="Photo Document" doc={photo} onChange={e => handleFileUpload(e, setPhoto)} />
 
               <Button onClick={handleSubmit} disabled={isSubmitting} variant="hero" size="xl" className="w-full mt-6">
                 {isSubmitting ? (

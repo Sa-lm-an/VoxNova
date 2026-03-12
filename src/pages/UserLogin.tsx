@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Phone, Send, ShieldCheck, Fingerprint, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,10 @@ type Step = 'scan' | 'phone' | 'otp';
 
 const UserLogin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setCurrentUser, votedUsers, isStudentRegistered, registeredStudents } = useVoting();
   const [step, setStep] = useState<Step>('scan');
+  const redirectTo = searchParams.get('redirect') === 'nominate' ? '/nominate' : '/vote';
   const [studentId, setStudentId] = useState('');
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +32,7 @@ const UserLogin = () => {
 
     setStudentId(id);
 
-    if (votedUsers.includes(id)) {
+    if (votedUsers.includes(id) && redirectTo !== '/nominate') {
       toast({
         title: 'Already Voted',
         description: 'You have already cast your vote in this election.',
@@ -79,7 +81,7 @@ const UserLogin = () => {
         description: 'You have been verified successfully.',
       });
 
-      navigate('/vote');
+      navigate(redirectTo);
     }
   };
 
@@ -92,11 +94,11 @@ const UserLogin = () => {
       {/* Decorative elements */}
       <div className="absolute top-20 left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/15 rounded-full blur-3xl" />
-      
+
       <div className="container mx-auto px-4 py-8 relative z-10">
         <button
           onClick={() => {
-            if (step === 'scan') navigate('/');
+            if (step === 'scan') navigate(-1 as any);
             else if (step === 'phone') setStep('scan');
             else if (step === 'otp') setStep('phone');
           }}
@@ -115,13 +117,12 @@ const UserLogin = () => {
                 <div key={label} className="flex items-center gap-3">
                   <div className="flex flex-col items-center gap-2">
                     <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-semibold transition-all duration-300 ${
-                        step === ['scan', 'phone', 'otp'][i]
-                          ? 'gradient-primary text-primary-foreground shadow-glow scale-110'
-                          : i < stepIndex
+                      className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-semibold transition-all duration-300 ${step === ['scan', 'phone', 'otp'][i]
+                        ? 'gradient-primary text-primary-foreground shadow-glow scale-110'
+                        : i < stepIndex
                           ? 'bg-primary text-primary-foreground'
                           : 'glass-card text-muted-foreground'
-                      }`}
+                        }`}
                     >
                       <Icon className="h-5 w-5" />
                     </div>

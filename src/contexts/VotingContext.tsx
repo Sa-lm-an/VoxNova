@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Candidate, User, Nomination, OfflineVoteRecord, Position, POSITIONS, RegisteredStudent } from '@/types/voting';
+import { Candidate, User, Nomination, OfflineVoteRecord, Position, POSITIONS, RegisteredStudent, ElectionPhase } from '@/types/voting';
 
 interface VotingContextType {
   candidates: Candidate[];
@@ -13,14 +13,17 @@ interface VotingContextType {
   setIsAdmin: (value: boolean) => void;
   isController: boolean;
   setIsController: (value: boolean) => void;
-  votingActive: boolean;
-  setVotingActive: (value: boolean) => void;
+  electionPhase: ElectionPhase;
+  setElectionPhase: (phase: ElectionPhase) => void;
+  controllerCredentials: { id: string; pass: string } | null;
+  setControllerCredentials: (creds: { id: string; pass: string } | null) => void;
   nominations: Nomination[];
   addNomination: (nomination: Omit<Nomination, 'id' | 'status' | 'submittedAt'>) => void;
   updateNominationStatus: (id: string, status: 'approved' | 'rejected') => void;
   offlineRecords: OfflineVoteRecord[];
   markOfflineVote: (studentId: string, controllerName: string) => void;
   unmarkOfflineVote: (studentId: string) => void;
+  addOfflineVotesForCandidate: (candidateId: string, count: number) => void;
   registeredStudents: RegisteredStudent[];
   addStudent: (student: RegisteredStudent) => void;
   addStudentsBulk: (students: RegisteredStudent[]) => { added: number; skipped: number };
@@ -31,23 +34,36 @@ interface VotingContextType {
 const VotingContext = createContext<VotingContextType | undefined>(undefined);
 
 const initialCandidates: Candidate[] = [
-  { id: '1', name: 'Sarah Johnson', position: 'President', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400', votes: 45, department: 'Computer Science' },
-  { id: '2', name: 'Michael Chen', position: 'President', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', votes: 38, department: 'Engineering' },
-  { id: '3', name: 'Emily Davis', position: 'Vice President', image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400', votes: 52, department: 'Business' },
-  { id: '4', name: 'James Wilson', position: 'Vice President', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400', votes: 30, department: 'Arts' },
-  { id: '5', name: 'Priya Sharma', position: 'Secretary', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400', votes: 41, department: 'Science' },
-  { id: '6', name: 'David Kim', position: 'Secretary', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400', votes: 35, department: 'Law' },
+  // Chairperson (2)
+  { id: '1', name: 'Arjun Das', position: 'Chairperson', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Arjun', votes: 120, department: 'cs', party: 'SFI' },
+  { id: '2', name: 'Mohammed Ali', position: 'Chairperson', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ali', votes: 98, department: 'bba', party: 'MSF' },
+  // Vice Chairperson (2)
+  { id: '3', name: 'Fathima KS', position: 'Vice Chairperson', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fathima', votes: 115, department: 'bcom', party: 'Independent' },
+  { id: '4', name: 'Rahul PS', position: 'Vice Chairperson', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rahul', votes: 102, department: 'cs', party: 'SFI' },
+  // Secretary (1 - Unopposed)
+  { id: '5', name: 'Sneha Thomas', position: 'Secretary', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sneha', votes: 0, department: 'bba', party: 'Independent' },
+  // Department Representative (2 - CS specifically for testing)
+  { id: '6', name: 'Karthik R', position: 'Department Representative', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Karthik', votes: 45, department: 'cs', party: 'MSF' },
+  { id: '7', name: 'Meera M', position: 'Department Representative', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Meera', votes: 52, department: 'cs', party: 'SFI' },
+  // General Captain (2)
+  { id: '8', name: 'Vishnu V', position: 'General Captain', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vishnu', votes: 88, department: 'bba', party: 'Independent' },
+  { id: '9', name: 'Abdurahman', position: 'General Captain', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Abdu', votes: 110, department: 'bcom', party: 'MSF' },
+  // Fine Arts Secretary (2)
+  { id: '10', name: 'Anjali C', position: 'Fine Arts Secretary', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Anjali', votes: 95, department: 'cs', party: 'SFI' },
+  { id: '11', name: 'Diya K', position: 'Fine Arts Secretary', image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Diya', votes: 105, department: 'bba', party: 'MSF' },
 ];
 
 const initialStudents: RegisteredStudent[] = [
-  { studentId: 'STU001', name: 'Aarav Patel', department: 'Computer Science', phone: '9876543210' },
-  { studentId: 'STU002', name: 'Meera Nair', department: 'Engineering', phone: '9876543211' },
-  { studentId: 'STU003', name: 'Rahul Gupta', department: 'Business', phone: '9876543212' },
-  { studentId: 'STU004', name: 'Ananya Singh', department: 'Arts', phone: '9876543213' },
-  { studentId: 'STU005', name: 'Karthik Iyer', department: 'Science', phone: '9876543214' },
-  { studentId: 'STU006', name: 'Sneha Reddy', department: 'Law', phone: '9876543215' },
-  { studentId: 'STU007', name: 'Arjun Kumar', department: 'Computer Science', phone: '9876543216' },
-  { studentId: 'STU008', name: 'Divya Menon', department: 'Engineering', phone: '9876543217' },
+  { studentId: 'STU001', name: 'fabin', department: 'cs', phone: '9876543210' },
+  { studentId: 'STU002', name: 'salman', department: 'bba', phone: '9876543211' },
+  { studentId: 'STU003', name: 'rena', department: 'bcom', phone: '9876543212' },
+  { studentId: 'STU004', name: 'shahana', department: 'cs', phone: '9876543213' },
+  { studentId: 'STU005', name: 'shamil', department: 'bba', phone: '9876543214' },
+  { studentId: 'STU006', name: 'dayyan', department: 'bcom', phone: '9876543215' },
+  { studentId: 'STU007', name: 'ramees', department: 'cs', phone: '9876543216' },
+  { studentId: 'STU008', name: 'shinana', department: 'bba', phone: '9876543217' },
+  { studentId: 'STU009', name: 'hiba', department: 'bcom', phone: '9876543218' },
+  { studentId: 'STU010', name: 'hunaif', department: 'cs', phone: '9876543219' },
 ];
 
 const initialOfflineRecords: OfflineVoteRecord[] = initialStudents.map(s => ({
@@ -65,7 +81,8 @@ export function VotingProvider({ children }: { children: ReactNode }) {
   const [votedUsers, setVotedUsers] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isController, setIsController] = useState(false);
-  const [votingActive, setVotingActive] = useState(true);
+  const [electionPhase, setElectionPhase] = useState<ElectionPhase>('nomination');
+  const [controllerCredentials, setControllerCredentials] = useState<{ id: string; pass: string } | null>(null);
   const [nominations, setNominations] = useState<Nomination[]>([]);
   const [offlineRecords, setOfflineRecords] = useState<OfflineVoteRecord[]>(initialOfflineRecords);
   const [registeredStudents, setRegisteredStudents] = useState<RegisteredStudent[]>(initialStudents);
@@ -150,6 +167,13 @@ export function VotingProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const addOfflineVotesForCandidate = (candidateId: string, count: number) => {
+    if (count <= 0) return;
+    setCandidates(prev =>
+      prev.map(c => c.id === candidateId ? { ...c, votes: c.votes + count } : c)
+    );
+  };
+
   const addStudent = (student: RegisteredStudent) => {
     setRegisteredStudents(prev => [...prev, student]);
     setOfflineRecords(prev => [...prev, {
@@ -200,9 +224,9 @@ export function VotingProvider({ children }: { children: ReactNode }) {
         candidates, addCandidate, removeCandidate,
         currentUser, setCurrentUser, votedUsers, castVote,
         isAdmin, setIsAdmin, isController, setIsController,
-        votingActive, setVotingActive,
+        electionPhase, setElectionPhase, controllerCredentials, setControllerCredentials,
         nominations, addNomination, updateNominationStatus,
-        offlineRecords, markOfflineVote, unmarkOfflineVote,
+        offlineRecords, markOfflineVote, unmarkOfflineVote, addOfflineVotesForCandidate,
         registeredStudents, addStudent, addStudentsBulk, removeStudent, isStudentRegistered,
       }}
     >

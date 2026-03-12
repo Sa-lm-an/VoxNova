@@ -15,7 +15,7 @@ const AdminLogin = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username.trim() || !password.trim()) {
       toast({
         title: 'Missing Fields',
@@ -28,7 +28,7 @@ const AdminLogin = () => {
     setIsLoading(true);
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    
+
     // Demo credentials
     if (username === 'admin' && password === 'admin123') {
       setIsAdmin(true);
@@ -44,7 +44,7 @@ const AdminLogin = () => {
         variant: 'destructive',
       });
     }
-    
+
     setIsLoading(false);
   };
 
@@ -52,7 +52,7 @@ const AdminLogin = () => {
     <div className="min-h-screen gradient-hero">
       <div className="container mx-auto px-4 py-8">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(-1 as any)}
           className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-5 w-5" />

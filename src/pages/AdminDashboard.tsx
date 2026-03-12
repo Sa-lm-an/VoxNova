@@ -1,13 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, LogOut, Trash2, Users, Vote, BarChart3, Power, PowerOff, FileCheck, FileX, Eye, UserPlus, Upload,
+  ArrowLeft, LogOut, Trash2, Users, Vote, Power, PowerOff, FileCheck, FileX, Eye, UserPlus, Upload, ShieldCheck, Key, RefreshCw, Search, Filter, ArrowUpDown
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useVoting } from '@/contexts/VotingContext';
 import { toast } from '@/hooks/use-toast';
-import { POSITIONS } from '@/types/voting';
+import { POSITIONS, POSITION_CATEGORIES } from '@/types/voting';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
@@ -21,7 +22,8 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const {
     candidates, removeCandidate, votedUsers,
-    isAdmin, setIsAdmin, votingActive, setVotingActive,
+    isAdmin, setIsAdmin, electionPhase, setElectionPhase,
+    controllerCredentials, setControllerCredentials,
     nominations, updateNominationStatus,
     registeredStudents, addStudent, addStudentsBulk, removeStudent,
   } = useVoting();
@@ -29,8 +31,42 @@ const AdminDashboard = () => {
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '', phone: '' });
   const [activeTab, setActiveTab] = useState('candidates');
+  const [activeCandidateCategory, setActiveCandidateCategory] = useState<string | null>('General');
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+
+  // Pagination & Filtering
+  const [search, setSearch] = useState('');
+  const [deptFilter, setDeptFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'name' | 'studentId' | 'department'>('name');
+  const [sortAsc, setSortAsc] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  const departments = useMemo(() => [...new Set(registeredStudents.map(r => r.department))], [registeredStudents]);
+
+  const filteredStudents = useMemo(() => {
+    let records = [...registeredStudents];
+
+    if (search) {
+      const q = search.toLowerCase();
+      records = records.filter(r => r.name.toLowerCase().includes(q) || r.studentId.toLowerCase().includes(q));
+    }
+    if (deptFilter !== 'all') records = records.filter(r => r.department === deptFilter);
+
+    records.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortBy === 'studentId') cmp = a.studentId.localeCompare(b.studentId);
+      else if (sortBy === 'department') cmp = a.department.localeCompare(b.department);
+      return sortAsc ? cmp : -cmp;
+    });
+
+    return records;
+  }, [registeredStudents, search, deptFilter, sortBy, sortAsc]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+  const pagedStudents = filteredStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   if (!isAdmin) { navigate('/admin-login'); return null; }
 
@@ -97,9 +133,11 @@ const AdminDashboard = () => {
 
   const handleLogout = () => { setIsAdmin(false); navigate('/'); };
 
-  const toggleVoting = () => {
-    setVotingActive(!votingActive);
-    toast({ title: votingActive ? 'Voting Stopped' : 'Voting Started', description: votingActive ? 'The election has been paused.' : 'Students can now cast their votes.' });
+  const generateControllerCredentials = () => {
+    const id = 'CTRL-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const pass = Math.random().toString(36).substring(2, 8) + '!@';
+    setControllerCredentials({ id, pass });
+    toast({ title: 'Credentials Generated', description: 'Controller ID and Password created successfully.' });
   };
 
   const handleNomination = (id: string, status: 'approved' | 'rejected') => {
@@ -131,19 +169,52 @@ const AdminDashboard = () => {
           <div className="rounded-2xl bg-card p-5 shadow-card"><Users className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{candidates.length}</p><p className="text-sm text-muted-foreground">Candidates</p></div>
           <div className="rounded-2xl bg-card p-5 shadow-card"><UserPlus className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{registeredStudents.length}</p><p className="text-sm text-muted-foreground">Registered Students</p></div>
           <div className="rounded-2xl bg-card p-5 shadow-card"><Vote className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{votedUsers.length}</p><p className="text-sm text-muted-foreground">Voters</p></div>
-          <div className={`rounded-2xl p-5 shadow-card ${votingActive ? 'bg-primary/10' : 'bg-destructive/10'}`}>
-            {votingActive ? <Power className="h-6 w-6 text-primary" /> : <PowerOff className="h-6 w-6 text-destructive" />}
-            <p className="mt-2 font-display text-2xl font-bold text-foreground">{votingActive ? 'Active' : 'Paused'}</p>
-            <p className="text-sm text-muted-foreground">Status</p>
+          <div className="rounded-2xl bg-primary/10 p-5 shadow-card">
+            <ShieldCheck className="h-6 w-6 text-primary" />
+            <p className="mt-2 font-display text-2xl font-bold text-foreground capitalize">{electionPhase}</p>
+            <p className="text-sm text-muted-foreground">Current Phase</p>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-8 flex flex-wrap gap-4">
-          <Button onClick={toggleVoting} variant={votingActive ? 'destructive' : 'default'} size="lg">
-            {votingActive ? <><PowerOff className="mr-2 h-5 w-5" /> Stop Voting</> : <><Power className="mr-2 h-5 w-5" /> Start Voting</>}
-          </Button>
-          <Button onClick={() => navigate('/results')} variant="glass" size="lg"><BarChart3 className="mr-2 h-5 w-5" /> View Results</Button>
+        {/* Phase Controls & Controller Auth */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="rounded-2xl bg-card p-6 shadow-card border border-border/50">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2"><Power className="h-5 w-5 text-primary" /> Election Phase Control</h3>
+            <p className="text-sm text-muted-foreground mb-6">Changing the phase automatically restricts access to other areas of the system.</p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={() => { setElectionPhase('nomination'); toast({ title: 'Phase Updated', description: 'System is now in Nomination Phase.' }); }} variant={electionPhase === 'nomination' ? 'default' : 'outline'} className="flex-1">
+                1. Nomination
+              </Button>
+              <Button onClick={() => { setElectionPhase('voting'); toast({ title: 'Phase Updated', description: 'System is now in Voting Phase.' }); }} variant={electionPhase === 'voting' ? 'default' : 'outline'} className="flex-1">
+                2. Voting
+              </Button>
+              <Button onClick={() => { setElectionPhase('results'); toast({ title: 'Phase Updated', description: 'System is now in Results Phase.' }); }} variant={electionPhase === 'results' ? 'default' : 'outline'} className="flex-1">
+                3. Results
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-card p-6 shadow-card border border-border/50">
+            <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2"><Key className="h-5 w-5 text-primary" /> Controller Access</h3>
+            <p className="text-sm text-muted-foreground mb-4">Generate credentials for the offline election controllers. Share these securely.</p>
+            {controllerCredentials ? (
+              <div className="bg-muted/50 p-4 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Controller ID</p>
+                  <p className="font-mono text-foreground font-semibold mb-2">{controllerCredentials.id}</p>
+                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Password</p>
+                  <p className="font-mono text-foreground font-semibold">{controllerCredentials.pass}</p>
+                </div>
+                <Button variant="outline" size="icon" onClick={generateControllerCredentials} title="Regenerate">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={generateControllerCredentials} variant="hero" className="w-full h-full min-h-[88px]">
+                Generate Controller Credentials
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -164,40 +235,76 @@ const AdminDashboard = () => {
 
           <TabsContent value="candidates">
             <p className="mt-4 mb-4 text-sm text-muted-foreground">Candidates are added automatically when nominations are approved.</p>
-            {POSITIONS.map(position => {
-              const positionCandidates = candidates.filter(c => c.position === position);
+            {Object.entries(POSITION_CATEGORIES).map(([category, categoryPositions]) => {
+              const isOpen = activeCandidateCategory === category;
+              const totalInCategory = candidates.filter(c => categoryPositions.includes(c.position)).length;
               return (
-                <div key={position} className="mt-6">
-                  <h3 className="mb-3 font-display text-lg font-semibold text-foreground">{position}</h3>
-                  <div className="space-y-3">
-                    {positionCandidates.map(candidate => (
-                      <div key={candidate.id} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card">
-                        <img src={candidate.image} alt={candidate.name} className="h-16 w-16 rounded-xl object-cover" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-foreground">{candidate.name}</p>
-                          <p className="text-sm text-muted-foreground">{candidate.department}</p>
-                        </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-5 w-5" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remove Candidate?</AlertDialogTitle>
-                              <AlertDialogDescription>Remove {candidate.name}? This cannot be undone.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleRemoveCandidate(candidate.id, candidate.name)}>Remove</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    ))}
-                    {positionCandidates.length === 0 && (
-                      <p className="text-sm text-muted-foreground py-4">No candidates for {position} yet.</p>
-                    )}
-                  </div>
+                <div key={category} className="mb-4 rounded-2xl border border-border/40 overflow-hidden">
+                  {/* Accordion Header */}
+                  <button
+                    onClick={() => setActiveCandidateCategory(isOpen ? null : category)}
+                    className={`w-full flex items-center justify-between px-6 py-4 transition-all ${isOpen ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted/50 text-foreground'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <h2 className="font-display text-xl font-bold">{category} Council</h2>
+                      <Badge variant={isOpen ? 'secondary' : 'secondary'} className={`text-xs ${isOpen ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
+                        {totalInCategory} candidates
+                      </Badge>
+                    </div>
+                    <span className={`text-xl font-bold transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>⌄</span>
+                  </button>
+
+                  {/* Accordion Body */}
+                  {isOpen && (
+                    <div className="p-4 space-y-8 border-t border-border/30 bg-card/50">
+                      {categoryPositions.map(position => {
+                        const positionCandidates = candidates.filter(c => c.position === position);
+                        return (
+                          <div key={position} className="mt-2">
+                            <h3 className="mb-3 font-display text-lg font-semibold text-foreground border-b border-border/30 pb-2">{position}</h3>
+                            <div className="space-y-3">
+                              {positionCandidates.map(candidate => (
+                                <div key={candidate.id} className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-card hover:shadow-elevated transition-shadow">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-foreground truncate">{candidate.name}</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span className="text-xs text-muted-foreground">{candidate.department}</span>
+                                      {candidate.party && (
+                                        <>
+                                          <span className="text-muted-foreground/30">•</span>
+                                          <span className="text-xs font-medium text-[#38a09e]">🏳 {candidate.party}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-5 w-5" /></Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove Candidate?</AlertDialogTitle>
+                                        <AlertDialogDescription>Remove {candidate.name} from the {position} election? This cannot be undone.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleRemoveCandidate(candidate.id, candidate.name)}>Remove</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              ))}
+                              {positionCandidates.length === 0 && (
+                                <div className="bg-muted/30 rounded-xl p-4 text-center border border-dashed border-border/50">
+                                  <p className="text-sm text-muted-foreground">No candidates for {position} yet.</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -245,59 +352,123 @@ const AdminDashboard = () => {
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-card shadow-card overflow-hidden">
-                <Table>
-                  <TableHeader>
-                     <TableRow>
-                      <TableHead>Student ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Vote Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {registeredStudents.map(student => (
-                      <TableRow key={student.studentId}>
-                        <TableCell className="font-medium text-foreground">{student.studentId}</TableCell>
-                        <TableCell className="text-foreground">{student.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{student.department}</TableCell>
-                        <TableCell className="text-muted-foreground">{student.phone}</TableCell>
-                        <TableCell>
-                          {votedUsers.includes(student.studentId) ? (
-                            <Badge variant="default">Voted</Badge>
-                          ) : (
-                            <Badge variant="secondary">Not Voted</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Remove Student?</AlertDialogTitle>
-                                <AlertDialogDescription>Remove {student.name} from the voter list? They will no longer be able to vote.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleRemoveStudent(student.studentId, student.name)}>Remove</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {registeredStudents.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No students registered yet.</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+              {/* Filtering & Sorting Controls */}
+              <div className="mb-6 grid gap-4 rounded-xl bg-card/50 p-4 md:grid-cols-4 border border-border/40">
+                <div className="relative md:col-span-2">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or ID..."
+                    className="pl-9 bg-background"
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                  />
+                </div>
+
+                <Select value={deptFilter} onValueChange={v => { setDeptFilter(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="bg-background">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground" />
+                      <SelectValue placeholder="Department" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex gap-2">
+                  <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                    <SelectTrigger className="bg-background flex-1">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="studentId">ID</SelectItem>
+                      <SelectItem value="department">Department</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" className="bg-background shrink-0" onClick={() => setSortAsc(!sortAsc)} title={sortAsc ? 'Ascending' : 'Descending'}>
+                    <ArrowUpDown className={`h-4 w-4 transition-transform ${sortAsc ? '' : 'rotate-180'}`} />
+                  </Button>
+                </div>
               </div>
+
+              <div className="rounded-2xl bg-card shadow-card overflow-hidden border border-border/40">
+                <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                  <Table className="relative">
+                    <TableHeader className="sticky top-0 bg-card/95 backdrop-blur z-10 shadow-sm">
+                      <TableRow>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Vote Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagedStudents.map(student => (
+                        <TableRow key={student.studentId} className="hover:bg-muted/30">
+                          <TableCell className="font-medium text-foreground">{student.studentId}</TableCell>
+                          <TableCell className="text-foreground">{student.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{student.department}</TableCell>
+                          <TableCell className="text-muted-foreground">{student.phone}</TableCell>
+                          <TableCell>
+                            {votedUsers.includes(student.studentId) ? (
+                              <Badge variant="default" className="bg-primary/90">Voted</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-muted text-muted-foreground">Not Voted</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove Student?</AlertDialogTitle>
+                                  <AlertDialogDescription>Remove {student.name} from the voter list? They will no longer be able to vote.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleRemoveStudent(student.studentId, student.name)}>Remove</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {pagedStudents.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No students found matching your criteria.</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between px-2">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    Showing <span className="font-medium text-foreground">{(currentPage - 1) * PAGE_SIZE + 1}</span> to <span className="font-medium text-foreground">{Math.min(currentPage * PAGE_SIZE, filteredStudents.length)}</span> of <span className="font-medium text-foreground">{filteredStudents.length}</span> students
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                      Previous
+                    </Button>
+                    <div className="flex items-center justify-center min-w-[32px] text-sm font-medium">
+                      {currentPage} / {totalPages}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -309,21 +480,21 @@ const AdminDashboard = () => {
                 nominations.map(nom => (
                   <div key={nom.id} className="rounded-2xl bg-card p-5 shadow-card space-y-3">
                     <div className="flex items-start gap-4">
-                      <img
-                        src={nom.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${nom.name}`}
-                        alt={nom.name}
-                        className="h-16 w-16 rounded-xl object-cover cursor-pointer ring-2 ring-border/30 hover:ring-primary/50 transition-all"
-                        onClick={() => setViewingImage(nom.image)}
-                      />
+                      <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-primary/10 text-primary font-bold text-2xl border border-primary/20 shrink-0">
+                        {nom.name.charAt(0).toUpperCase()}
+                      </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-foreground">{nom.name}</p>
                           <Badge variant={nom.status === 'approved' ? 'default' : nom.status === 'rejected' ? 'destructive' : 'secondary'}>
                             {nom.status}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">{nom.position} • {nom.department}</p>
-                        <p className="text-xs text-muted-foreground">ID: {nom.studentId} • Submitted: {new Date(nom.submittedAt).toLocaleDateString()}</p>
+                        <p className="text-sm text-muted-foreground mt-0.5">{nom.position} • {nom.department}</p>
+                        {nom.party && (
+                          <p className="text-sm font-medium text-[#38a09e] mt-0.5">🏳 {nom.party}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">ID: {nom.studentId} • Submitted: {new Date(nom.submittedAt).toLocaleDateString()}</p>
                       </div>
                       {nom.status === 'pending' && (
                         <div className="flex gap-2">
@@ -346,11 +517,6 @@ const AdminDashboard = () => {
                       {nom.marklistName && (
                         <button onClick={() => setViewingImage(nom.marklistUrl)} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors">
                           <Eye className="h-3 w-3" /> Marklist
-                        </button>
-                      )}
-                      {nom.photoName && (
-                        <button onClick={() => setViewingImage(nom.photoUrl)} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors">
-                          <Eye className="h-3 w-3" /> Photo Document
                         </button>
                       )}
                     </div>

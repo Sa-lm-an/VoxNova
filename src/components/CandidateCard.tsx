@@ -1,5 +1,4 @@
 import { Candidate } from '@/types/voting';
-import { Button } from '@/components/ui/button';
 import { Check, Vote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,62 +20,50 @@ export function CandidateCard({
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-300 hover:shadow-elevated animate-scale-in',
-        isSelected && 'ring-2 ring-primary shadow-glow'
+        'group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-300 hover:shadow-elevated animate-scale-in flex items-center p-4 gap-4',
+        isSelected && 'ring-2 ring-primary shadow-glow bg-primary/5'
       )}
     >
-      <div className="aspect-[4/3] overflow-hidden">
-        <img
-          src={candidate.image}
-          alt={candidate.name}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
-      </div>
-      
-      <div className="absolute bottom-0 left-0 right-0 p-5">
-        <div className="mb-3">
-          <span className="inline-block rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary-foreground backdrop-blur-sm">
-            {candidate.department}
-          </span>
-        </div>
-        <h3 className="font-display text-xl font-semibold text-primary-foreground">
-          {candidate.name}
-        </h3>
-        <p className="text-sm text-primary-foreground/80">{candidate.position}</p>
-        
+      {/* Text info */}
+      <div className="flex-1 min-w-0">
+        <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary mb-1">
+          {candidate.department}
+        </span>
+        <h3 className="font-display text-base font-semibold text-foreground truncate">{candidate.name}</h3>
+        <p className="text-xs text-muted-foreground">{candidate.position}</p>
+        {candidate.party && (
+          <p className="text-sm font-medium text-[#38a09e] mt-1">🏳 {candidate.party}</p>
+        )}
+
         {showVotes && (
           <div className="mt-2 flex items-center gap-2">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-primary-foreground/20">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full gradient-primary transition-all duration-500"
                 style={{ width: `${Math.min(candidate.votes * 2, 100)}%` }}
               />
             </div>
-            <span className="text-sm font-semibold text-primary-foreground">
-              {candidate.votes}
-            </span>
-          </div>
-        )}
-        
-        {onVote && !hasVoted && (
-          <Button
-            onClick={onVote}
-            variant="hero"
-            className="mt-4 w-full"
-          >
-            <Vote className="mr-2 h-4 w-4" />
-            Vote
-          </Button>
-        )}
-        
-        {isSelected && (
-          <div className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-primary/90 py-2 text-primary-foreground">
-            <Check className="h-5 w-5" />
-            <span className="font-medium">Selected</span>
+            <span className="text-xs font-semibold text-primary">{candidate.votes} votes</span>
           </div>
         )}
       </div>
+
+      {/* Selected badge */}
+      {isSelected && (
+        <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
+          <Check className="h-4 w-4 text-primary" />
+        </div>
+      )}
+
+      {onVote && !hasVoted && (
+        <button
+          onClick={onVote}
+          className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          <Vote className="h-4 w-4" />
+          Vote
+        </button>
+      )}
     </div>
   );
 }

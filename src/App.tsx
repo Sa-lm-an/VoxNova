@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ControllerDashboard from "./pages/ControllerDashboard";
 import Nominate from "./pages/Nominate";
 import NotFound from "./pages/NotFound";
+import NavBar from "./components/NavBar";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <NavBar />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
