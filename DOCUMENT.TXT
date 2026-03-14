@@ -1,0 +1,37 @@
+3.3 DEVELOPING TOOLS
+
+Frontend Technologies
+
+React.js (Vite): Used to build the responsive and dynamic user interface. Standard for modern web applications.
+Tailwind CSS: A utility-first CSS framework used for crafting the premium and modern UI design.
+Lucide React: Provides the high-quality, consistent icon set used throughout the application.
+Shadcn UI: A collection of re-usable components built on Radix UI, providing accessible and beautiful UI elements (Tabs, Buttons, Toast).
+
+Backend & Database Technologies
+
+Supabase: The primary backend platform. It handles database management, user authentication, and real-time data synchronization.
+PostgreSQL: The underlying relational database within Supabase used to store student records, candidate data, and election configurations.
+Supabase Auth: Secure authentication system for role-based access control (Student, Admin, Controller).
+
+Additional Tools
+
+Git & GitHub: Used for version control and collaborative development.
+TypeScript: Ensuring code quality and type safety throughout the development process.
+Vite: Fast build tool and development server for the modern web project.
+
+Software Requirements
+
+Front-end: React.js, Vite, Tailwind CSS, TypeScript.
+Back-end: Supabase (Managed Service).
+Database: PostgreSQL (via Supabase).
+Browser: Modern web browser (Chrome, Firefox, Safari, Edge).
+Operating System: Windows, macOS, or Linux.
+
+Hardware Requirements
+
+Processor: Intel i3 or equivalent (Minimum).
+Hard Disk: 100 GB or more storage capacity.
+RAM: Minimum 4 GB RAM.
+Monitor: SVGA or higher resolution display.
+Keyboard and Mouse: Standard input devices.
+Internet Connectivity: Required for database synchronization and authentication.

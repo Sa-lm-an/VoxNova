@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Vote, Shield, ClipboardCheck } from 'lucide-react';
+import { Shield, User, Building2 } from 'lucide-react';
 
 const loginOptions = [
   {
     title: 'Student',
     description: 'Vote in elections or apply for nomination',
-    icon: Vote,
+    icon: User,
     path: '/user-login',
     gradient: 'gradient-primary',
     shadow: 'shadow-glow',
@@ -21,10 +21,10 @@ const loginOptions = [
   {
     title: 'Controller',
     description: 'Handle offline voting & verification',
-    icon: ClipboardCheck,
+    icon: Building2,
     path: '/controller-login',
-    gradient: 'bg-accent',
-    shadow: 'shadow-md',
+    gradient: 'bg-gradient-to-br from-[#112250] to-[#1E4AA8]',
+    shadow: 'shadow-md shadow-blue-500/10',
   },
 ];
 
@@ -34,13 +34,7 @@ const Login = () => {
   return (
     <div className="min-h-screen gradient-hero">
       <div className="container mx-auto px-4 py-8">
-        <button
-          onClick={() => navigate(-1 as any)}
-          className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Back
-        </button>
+        <div className="pt-4" />
 
         <div className="mx-auto mt-12 max-w-md text-center">
           <h2 className="font-display text-3xl font-bold text-foreground animate-slide-up">

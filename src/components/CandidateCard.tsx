@@ -20,8 +20,8 @@ export function CandidateCard({
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-300 hover:shadow-elevated animate-scale-in flex items-center p-4 gap-4',
-        isSelected && 'ring-2 ring-primary shadow-glow bg-primary/5'
+        'group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-300 hover:shadow-elevated animate-scale-in flex items-center p-4 gap-4 border border-border/40',
+        isSelected && 'ring-2 ring-[#E0C58F] shadow-[0_0_20px_rgba(224,197,143,0.3)] bg-[#E0C58F]/5 border-[#E0C58F]/50'
       )}
     >
       {/* Text info */}
@@ -32,7 +32,10 @@ export function CandidateCard({
         <h3 className="font-display text-base font-semibold text-foreground truncate">{candidate.name}</h3>
         <p className="text-xs text-muted-foreground">{candidate.position}</p>
         {candidate.party && (
-          <p className="text-sm font-medium text-[#38a09e] mt-1">🏳 {candidate.party}</p>
+          <p className="text-sm font-bold text-[#1E4AA8] mt-1 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#E0C58F]" />
+            {candidate.party}
+          </p>
         )}
 
         {showVotes && (
@@ -50,8 +53,8 @@ export function CandidateCard({
 
       {/* Selected badge */}
       {isSelected && (
-        <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
-          <Check className="h-4 w-4 text-primary" />
+        <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-[#E0C58F]">
+          <Check className="h-4 w-4 text-[#112250] stroke-[3px]" />
         </div>
       )}
 

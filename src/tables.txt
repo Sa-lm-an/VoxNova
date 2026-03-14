@@ -1,0 +1,113 @@
+-- VoxNova E-Voting System - Complete Supabase SQL Schema & Seed Data
+
+-- 0. Enable UUID Extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 1. Candidates
+CREATE TABLE candidates (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  position TEXT NOT NULL,
+  online_votes INTEGER DEFAULT 0,
+  offline_votes INTEGER DEFAULT 0,
+  votes INTEGER DEFAULT 0, -- Total votes (redundant but helpful for queries)
+  department TEXT NOT NULL,
+  party TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Nominations
+CREATE TABLE nominations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  student_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  position TEXT NOT NULL,
+  department TEXT NOT NULL,
+  party TEXT,
+  application_form_url TEXT,
+  marklist_url TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. Registered Students
+CREATE TABLE registered_students (
+  student_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  department TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Offline Vote Records
+CREATE TABLE offline_records (
+  student_id TEXT PRIMARY KEY REFERENCES registered_students(student_id) ON DELETE CASCADE,
+  voted_online BOOLEAN DEFAULT FALSE,
+  marked_offline BOOLEAN DEFAULT FALSE,
+  marked_at TIMESTAMP WITH TIME ZONE,
+  marked_by TEXT
+);
+
+-- 5. Voted Users (Online)
+CREATE TABLE voted_users (
+  student_id TEXT PRIMARY KEY REFERENCES registered_students(student_id) ON DELETE CASCADE,
+  voted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6. Election Metadata
+CREATE TABLE election_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Enable Realtime for all tables
+ALTER PUBLICATION supabase_realtime ADD TABLE candidates;
+ALTER PUBLICATION supabase_realtime ADD TABLE nominations;
+ALTER PUBLICATION supabase_realtime ADD TABLE registered_students;
+ALTER PUBLICATION supabase_realtime ADD TABLE offline_records;
+ALTER PUBLICATION supabase_realtime ADD TABLE election_config;
+
+-- ==========================================
+-- SEED DATA
+-- ==========================================
+
+-- Initial Config
+INSERT INTO election_config (key, value) VALUES ('election_phase', 'nomination');
+
+-- Initial Students (10)
+INSERT INTO registered_students (student_id, name, department, phone) VALUES
+('STU001', 'fabin', 'cs', '9876543210'),
+('STU002', 'salman', 'bba', '9876543211'),
+('STU003', 'rena', 'bcom', '9876543212'),
+('STU004', 'shahana', 'cs', '9876543213'),
+('STU005', 'shamil', 'bba', '9876543214'),
+('STU006', 'dayyan', 'bcom', '9876543215'),
+('STU007', 'ramees', 'cs', '9876543216'),
+('STU008', 'shinana', 'bba', '9876543217'),
+('STU009', 'hiba', 'bcom', '9876543218'),
+('STU010', 'hunaif', 'cs', '9876543219');
+
+-- Create initial offline records for these students
+INSERT INTO offline_records (student_id, voted_online, marked_offline)
+SELECT student_id, false, false FROM registered_students;
+
+-- Initial Candidates (18)
+INSERT INTO candidates (name, position, department, party, online_votes, offline_votes, votes) VALUES
+('Arjun Das', 'Chairperson', 'cs', 'SFI', 80, 40, 120),
+('Mohammed Ali', 'Chairperson', 'bba', 'MSF', 60, 38, 98),
+('Fathima KS', 'Vice Chairperson', 'bcom', 'Independent', 75, 40, 115),
+('Rahul PS', 'Vice Chairperson', 'bcom', 'SFI', 70, 32, 102),
+('Sneha Thomas', 'Secretary', 'cs', 'Independent', 0, 0, 0),
+('Sanjay Kumar', 'Chairperson', 'cs', 'ABVP', 0, 0, 0),
+('Ananya Nair', 'Vice Chairperson', 'bba', 'KSU', 0, 0, 0),
+('Ibrahim Khalil', 'Secretary', 'bcom', 'MSF', 0, 0, 0),
+('Vishnu Vardhan', 'General Captain', 'cs', 'Independent', 0, 0, 0),
+('Meera Rajesh', 'General Captain', 'bba', 'SFI', 0, 0, 0),
+('Kavya Sree', 'Fine Arts Secretary', 'bcom', 'Independent', 0, 0, 0),
+('Aditya Varma', 'Fine Arts Secretary', 'cs', 'KSU', 0, 0, 0),
+('Siddharth Menon', 'Department Representative', 'bba', 'Independent', 0, 0, 0),
+('Priya Sharma', 'Department Representative', 'cs', 'SFI', 0, 0, 0),
+('Amina Beevi', 'Department Representative', 'bcom', 'MSF', 0, 0, 0),
+('Maneesh M', 'Department Representative', 'cs', 'Independent', 0, 0, 0),
+('Anita P', 'Department Representative', 'bba', 'KSU', 0, 0, 0),
+('Riaz A', 'Department Representative', 'bcom', 'ABVP', 0, 0, 0);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, FileText, User, Building, Image, Flag } from 'lucide-react';
+import { Send, FileText, User, Building, Image, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,8 +32,6 @@ const Nominate = () => {
 
   if (!currentUser) return null;
 
-  if (!currentUser) return null;
-
   const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<{ url: string; name: string } | null>>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -49,21 +47,20 @@ const Nominate = () => {
       return;
     }
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 800));
 
-    addNomination({
-      studentId: currentUser.studentId,
+    await addNomination({
+      student_id: currentUser.student_id,
       name: currentUser.name,
       position: position as Position,
       department: currentUser.department,
       party,
-      applicationFormUrl: applicationForm.url,
-      applicationFormName: applicationForm.name,
-      marklistUrl: marklist.url,
-      marklistName: marklist.name,
+      application_form_url: applicationForm.url,
+      application_form_name: applicationForm.name,
+      marklist_url: marklist.url,
+      marklist_name: marklist.name,
+      submitted_at: new Date().toISOString()
     });
 
-    toast({ title: 'Nomination Submitted!', description: 'Your nomination is pending admin approval.' });
     setIsSubmitting(false);
     navigate('/');
   };
@@ -74,9 +71,7 @@ const Nominate = () => {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl translate-y-1/2" />
 
       <div className="container mx-auto px-4 py-8 relative z-10">
-        <button onClick={() => navigate(-1 as any)} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground group">
-          <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" /> Back
-        </button>
+        <div className="pt-4" />
 
         <div className="mx-auto mt-8 max-w-lg">
           <div className="glass-card rounded-3xl p-8 animate-scale-in">
@@ -94,7 +89,7 @@ const Nominate = () => {
                 <div className="flex items-center gap-2 text-sm">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium text-foreground">{currentUser.name}</span>
-                  <span className="text-muted-foreground">({currentUser.studentId})</span>
+                  <span className="text-muted-foreground">({currentUser.student_id})</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Building className="h-4 w-4 text-muted-foreground" />
@@ -147,11 +142,11 @@ const Nominate = () => {
                 </label>
               </div>
 
-              <Button onClick={handleSubmit} disabled={isSubmitting} variant="hero" size="xl" className="w-full mt-6">
+              <Button onClick={handleSubmit} disabled={isSubmitting} variant="hero" size="xl" className="w-full mt-6 shadow-glow-sm">
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
-                    <span className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    Submitting...
+                    <span className="h-5 w-5 border-2 border-[#112250]/30 border-t-[#112250] rounded-full animate-spin" />
+                    Processing...
                   </span>
                 ) : (
                   <><Send className="mr-2 h-5 w-5" /> Submit Nomination</>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, User, LogIn, ClipboardCheck } from 'lucide-react';
+import { Lock, User, LogIn, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useVoting } from '@/contexts/VotingContext';
@@ -38,9 +38,7 @@ const ControllerLogin = () => {
   return (
     <div className="min-h-screen gradient-hero">
       <div className="container mx-auto px-4 py-8">
-        <button onClick={() => navigate(-1 as any)} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
-          <ArrowLeft className="h-5 w-5" /> Back
-        </button>
+        <div className="pt-4" />
 
         <div className="mx-auto mt-16 max-w-md">
           <div className="rounded-3xl bg-card p-8 shadow-elevated animate-scale-in">

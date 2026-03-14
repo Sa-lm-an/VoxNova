@@ -12,15 +12,16 @@ export interface Candidate {
   id: string;
   name: string;
   position: Position;
-  image?: string; // Made optional per user request
   votes: number;
+  online_votes: number;
+  offline_votes: number;
   department: string;
   party: string;
 }
 
 export interface User {
   id: string;
-  studentId: string;
+  student_id: string;
   name: string;
   hasVoted: boolean;
   department: string;
@@ -29,25 +30,22 @@ export interface User {
 
 export interface Nomination {
   id: string;
-  studentId: string;
+  student_id: string;
   name: string;
   position: Position;
   department: string;
   party: string;
-  image?: string; // Made optional
-  applicationFormUrl?: string;
-  applicationFormName?: string;
-  marklistUrl?: string;
-  marklistName?: string;
-  photoUrl?: string; // Made optional
-  photoName?: string; // Made optional
+  application_form_url?: string;
+  application_form_name?: string;
+  marklist_url?: string;
+  marklist_name?: string;
   status: 'pending' | 'approved' | 'rejected';
-  submittedAt: string;
+  submitted_at: string;
 }
 
 
 export interface RegisteredStudent {
-  studentId: string;
+  student_id: string;
   name: string;
   department: string;
   phone: string;
@@ -55,7 +53,7 @@ export interface RegisteredStudent {
 
 
 export interface OfflineVoteRecord {
-  studentId: string;
+  student_id: string;
   studentName: string;
   department: string;
   phone: string;

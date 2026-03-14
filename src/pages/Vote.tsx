@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, LogOut, Vote as VoteIcon, Sparkles, Trophy } from 'lucide-react';
+import { Check, Vote as VoteIcon, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CandidateCard } from '@/components/CandidateCard';
 import { useVoting } from '@/contexts/VotingContext';
@@ -14,14 +14,62 @@ import {
 
 const Vote = () => {
   const navigate = useNavigate();
-  const { candidates, currentUser, castVote, setCurrentUser, electionPhase, offlineRecords } = useVoting();
+  const { candidates, currentUser, castVote, setCurrentUser, electionPhase, offlineRecords, isLoading } = useVoting();
+
+  useEffect(() => {
+    if (!currentUser && !isLoading) {
+      navigate('/user-login');
+    }
+  }, [currentUser, isLoading, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#112250]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#E0C58F] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!currentUser) return null;
   const [selectedVotes, setSelectedVotes] = useState<Partial<Record<Position, string>>>({});
   const [showConfirm, setShowConfirm] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
 
+  // Auto-select unopposed candidates and NOTA for empty positions
+  useEffect(() => {
+    if (!candidates.length || !currentUser) return;
+
+    const autoSelected: Partial<Record<Position, string>> = { ...selectedVotes };
+    let changed = false;
+
+    POSITIONS.forEach(pos => {
+      if (!selectedVotes[pos]) {
+        let positionCandidates = candidates.filter(c => c.position === pos);
+        if (pos === 'Department Representative') {
+          positionCandidates = positionCandidates.filter(c => c.department.toLowerCase() === currentUser.department.toLowerCase());
+        }
+
+        if (positionCandidates.length === 1) {
+          autoSelected[pos] = positionCandidates[0].id;
+          changed = true;
+        } else if (positionCandidates.length === 0) {
+          const notaId = pos === 'Department Representative'
+            ? `nota-${pos}-${currentUser.department}`
+            : `nota-${pos}`;
+          autoSelected[pos] = notaId;
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      setSelectedVotes(autoSelected);
+    }
+  }, [candidates, currentUser]);
+
   if (!currentUser) { navigate('/user-login'); return null; }
 
-  const offlineRecord = offlineRecords.find(r => r.studentId === currentUser.studentId);
+  const offlineRecord = offlineRecords.find(r => r.student_id === currentUser.student_id);
   const isMarkedOffline = offlineRecord?.markedOffline ?? false;
 
   if (electionPhase !== 'voting' || isMarkedOffline) {
@@ -46,22 +94,20 @@ const Vote = () => {
     );
   }
 
-  const handleVoteConfirm = () => {
+  const handleVoteConfirm = async () => {
     const allSelected = POSITIONS.every(p => selectedVotes[p]);
     if (!allSelected) {
       toast({ title: 'Incomplete', description: 'Please select a candidate for each position.', variant: 'destructive' });
       setShowConfirm(false);
       return;
     }
-    const success = castVote(selectedVotes as Record<Position, string>);
+    const success = await castVote(selectedVotes as Record<Position, string>);
     if (success) {
       setHasVoted(true);
       toast({ title: 'Vote Cast Successfully!', description: 'Thank you for participating in the election.' });
     }
     setShowConfirm(false);
   };
-
-  const handleLogout = () => { setCurrentUser(null); navigate('/'); };
 
   const allSelected = POSITIONS.every(p => selectedVotes[p]);
 
@@ -95,9 +141,7 @@ const Vote = () => {
 
       <div className="container mx-auto px-4 py-8 relative z-10">
         <div className="flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground group">
-            <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" /> Back
-          </button>
+          {/* Back button removed as requested */}
         </div>
 
         <div className="mt-8 text-center">
@@ -111,20 +155,29 @@ const Vote = () => {
         <Tabs defaultValue="General" className="mt-10">
           <TabsList className="grid w-full grid-cols-3 glass-card p-1.5 rounded-2xl h-auto mb-6">
             {Object.keys(POSITION_CATEGORIES).map(category => {
-              const categoryPositions = POSITION_CATEGORIES[category];
-              const categoryVotes = categoryPositions.filter(p => selectedVotes[p]);
-              const isComplete = categoryVotes.length === categoryPositions.length;
+              const positionsInCategory = POSITION_CATEGORIES[category];
+              const visiblePositions = positionsInCategory.filter(pos => {
+                let filtered = candidates.filter(c => c.position === pos);
+                if (pos === 'Department Representative') {
+                  filtered = filtered.filter(c => c.department.toLowerCase() === currentUser.department.toLowerCase());
+                }
+                return filtered.length > 1;
+              });
+
+              if (visiblePositions.length === 0) return null;
+
+              const isComplete = positionsInCategory.every(p => selectedVotes[p]);
 
               return (
                 <TabsTrigger
                   key={category}
                   value={category}
-                  className="relative py-3 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+                  className="relative py-3 rounded-xl data-[state=active]:bg-[#112250] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
                 >
                   <span className="hidden sm:inline">{category}</span>
                   <span className="sm:hidden">{category.substring(0, 3)}</span>
-                  {isComplete && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-white text-xs shadow-sm">
+                  {selectedVotes[visiblePositions[0]] && ( // Very simple check if some progress is made in this tab
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#E0C58F] text-[#112250] text-xs shadow-sm border-2 border-white font-black">
                       <Check className="h-3 w-3" />
                     </span>
                   )}
@@ -137,19 +190,14 @@ const Vote = () => {
             <TabsContent key={category} value={category} className="space-y-12">
               {positionsInCategory.map(pos => {
                 let positionCandidates = candidates.filter(c => c.position === pos);
-
-                // Department filter for Department Rep
                 if (pos === 'Department Representative') {
                   positionCandidates = positionCandidates.filter(c => c.department.toLowerCase() === currentUser.department.toLowerCase());
                 }
 
-                const notaId = `nota-${pos}`;
-                const isUnopposed = positionCandidates.length === 1;
-
-                // Auto-select unopposed candidate
-                if (isUnopposed && !selectedVotes[pos]) {
-                  setSelectedVotes(prev => ({ ...prev, [pos]: positionCandidates[0].id }));
-                }
+                const notaId = pos === 'Department Representative'
+                  ? `nota-${pos}-${currentUser.department}`
+                  : `nota-${pos}`;
+                if (positionCandidates.length <= 1) return null;
 
                 return (
                   <div key={pos} className="space-y-4">
@@ -159,76 +207,46 @@ const Vote = () => {
                         {selectedVotes[pos] && <Check className="h-4 w-4 text-green-500" />}
                       </h3>
                       <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                        {positionCandidates.length} Candidate{positionCandidates.length !== 1 ? 's' : ''}
+                        {positionCandidates.length} Candidates
                       </span>
                     </div>
 
-                    {isUnopposed ? (
-                      /* Unopposed position - show info card, no voting */
-                      <div className="rounded-2xl border-2 border-yellow-400/40 bg-yellow-50/30 dark:bg-yellow-500/5 p-6 flex items-center gap-5">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-yellow-400/20 shrink-0">
-                          <Trophy className="h-8 w-8 text-yellow-500" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-display text-lg font-bold text-foreground">{positionCandidates[0].name}</p>
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-700 text-xs font-semibold uppercase tracking-wide">
-                              <Trophy className="h-3 w-3" /> Wins Unopposed
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-0.5">{positionCandidates[0].department}</p>
-                          {positionCandidates[0].party && (
-                            <p className="text-sm font-medium text-[#38a09e] mt-1">🏳 {positionCandidates[0].party}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">This candidate is running unopposed and wins automatically. No voting required.</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {positionCandidates.map((candidate, index) => (
-                          <div
-                            key={candidate.id}
-                            onClick={() => setSelectedVotes(prev => ({ ...prev, [pos]: candidate.id }))}
-                            className="cursor-pointer animate-slide-up"
-                            style={{ animationDelay: `${index * 80}ms` }}
-                          >
-                            <CandidateCard candidate={candidate} isSelected={selectedVotes[pos] === candidate.id} />
-                          </div>
-                        ))}
-
-                        {/* NOTA Option */}
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {positionCandidates.map((candidate, index) => (
                         <div
-                          onClick={() => setSelectedVotes(prev => ({ ...prev, [pos]: notaId }))}
+                          key={candidate.id}
+                          onClick={() => setSelectedVotes(prev => ({ ...prev, [pos]: candidate.id }))}
                           className="cursor-pointer animate-slide-up"
-                          style={{ animationDelay: `${positionCandidates.length * 80}ms` }}
+                          style={{ animationDelay: `${index * 80}ms` }}
                         >
-                          <div className={`group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-300 hover:shadow-elevated flex items-center p-4 gap-4 ${selectedVotes[pos] === notaId ? 'ring-2 ring-destructive shadow-[0_0_20px_rgba(239,68,68,0.2)] bg-destructive/5' : ''
-                            }`}>
-                            <div className="relative shrink-0">
-                              <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
-                                <span className="text-xl font-bold text-muted-foreground">✗</span>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="inline-block rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive mb-1">NOTA</span>
-                              <h3 className="font-display text-base font-semibold text-foreground">None Of The Above</h3>
-                              <p className="text-xs text-muted-foreground shrink-0 leading-tight">Choose this if you reject all candidates</p>
-                            </div>
-                            {selectedVotes[pos] === notaId && (
-                              <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-destructive/10">
-                                <span className="text-destructive text-sm font-bold">✓</span>
-                              </div>
-                            )}
-                          </div>
+                          <CandidateCard candidate={candidate} isSelected={selectedVotes[pos] === candidate.id} />
                         </div>
+                      ))}
 
-                        {positionCandidates.length === 0 && (
-                          <div className="col-span-full glass-card border-dashed border-2 rounded-2xl p-8 text-center bg-background/30">
-                            <p className="text-muted-foreground">No candidates approved for this position {pos === 'Department Representative' ? `in ${currentUser.department}` : ''}.</p>
+                      <div
+                        onClick={() => setSelectedVotes(prev => ({ ...prev, [pos]: notaId }))}
+                        className="cursor-pointer animate-slide-up"
+                        style={{ animationDelay: `${positionCandidates.length * 80}ms` }}
+                      >
+                        <div className={`group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-300 hover:shadow-elevated flex items-center p-4 gap-4 border border-border/40 ${selectedVotes[pos] === notaId ? 'ring-2 ring-destructive/50 shadow-[0_0_20px_rgba(239,68,68,0.1)] bg-destructive/5 border-destructive/30' : ''}`}>
+                          <div className="relative shrink-0">
+                            <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+                              <span className="text-xl font-bold text-muted-foreground">✗</span>
+                            </div>
                           </div>
-                        )}
+                          <div className="flex-1 min-w-0">
+                            <span className="inline-block rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive mb-1">NOTA</span>
+                            <h3 className="font-display text-base font-semibold text-foreground">None Of The Above</h3>
+                            <p className="text-xs text-muted-foreground shrink-0 leading-tight">Choose this if you reject all candidates</p>
+                          </div>
+                          {selectedVotes[pos] === notaId && (
+                            <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-destructive">
+                              <Check className="h-4 w-4 text-white stroke-[3px]" />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 );
               })}
@@ -236,7 +254,6 @@ const Vote = () => {
           ))}
         </Tabs>
 
-        {/* Summary Bar */}
         <div className="fixed bottom-0 left-0 right-0 glass-dark p-5 animate-slide-up z-50">
           <div className="container mx-auto flex items-center justify-between gap-4">
             <div className="flex-1">
@@ -249,16 +266,20 @@ const Vote = () => {
                     />
                   ))}
                 </div>
-                <span className="text-sm font-medium text-foreground">
-                  {Object.keys(selectedVotes).length} / {POSITIONS.length}
-                </span>
               </div>
               <div className="hidden sm:flex gap-3">
-                {POSITIONS.map(pos => (
-                  <span key={pos} className={`text-xs ${selectedVotes[pos] ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                    {pos}: {selectedVotes[pos] ? candidates.find(c => c.id === selectedVotes[pos])?.name?.split(' ')[0] : '—'}
-                  </span>
-                ))}
+                {POSITIONS.map(pos => {
+                  let positionCandidates = candidates.filter(c => c.position === pos);
+                  if (pos === 'Department Representative') {
+                    positionCandidates = positionCandidates.filter(c => c.department.toLowerCase() === currentUser.department.toLowerCase());
+                  }
+                  if (positionCandidates.length <= 1) return null;
+                  return (
+                    <span key={pos} className={`text-xs ${selectedVotes[pos] ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                      {pos}: {selectedVotes[pos] ? (selectedVotes[pos]?.startsWith('nota') ? 'NOTA' : candidates.find(c => c.id === selectedVotes[pos])?.name?.split(' ')[0]) : '—'}
+                    </span>
+                  );
+                })}
               </div>
             </div>
             <Button onClick={() => setShowConfirm(true)} variant="hero" size="lg" disabled={!allSelected} className="shadow-glow">
@@ -276,16 +297,24 @@ const Vote = () => {
               <AlertDialogTitle className="text-center text-xl">Confirm Your Votes</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3 mt-4">
-                  {POSITIONS.map(pos => (
-                    <div key={pos} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
-                      <span className="text-sm font-medium text-muted-foreground">{pos}</span>
-                      <span className="text-sm font-semibold text-foreground">
-                        {selectedVotes[pos]?.startsWith('nota-')
-                          ? 'None Of The Above'
-                          : candidates.find(c => c.id === selectedVotes[pos])?.name}
-                      </span>
-                    </div>
-                  ))}
+                  {POSITIONS.map(pos => {
+                    let positionCandidates = candidates.filter(c => c.position === pos);
+                    if (pos === 'Department Representative') {
+                      positionCandidates = positionCandidates.filter(c => c.department.toLowerCase() === currentUser.department.toLowerCase());
+                    }
+                    if (positionCandidates.length <= 1) return null;
+
+                    return (
+                      <div key={pos} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+                        <span className="text-sm font-medium text-muted-foreground">{pos}</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {selectedVotes[pos]?.startsWith('nota-')
+                            ? 'None Of The Above'
+                            : candidates.find(c => c.id === selectedVotes[pos])?.name}
+                        </span>
+                      </div>
+                    );
+                  })}
                   <p className="text-center text-sm text-muted-foreground pt-2">This action cannot be undone.</p>
                 </div>
               </AlertDialogDescription>

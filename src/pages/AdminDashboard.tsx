@@ -1,7 +1,7 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, LogOut, Trash2, Users, Vote, Power, PowerOff, FileCheck, FileX, Eye, UserPlus, Upload, ShieldCheck, Key, RefreshCw, Search, Filter, ArrowUpDown
+  LogOut, Trash2, Users, Vote, Power, PowerOff, FileCheck, FileX, Eye, UserPlus, Upload, ShieldCheck, Key, RefreshCw, Search, Filter, ArrowUpDown, FileText
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -21,15 +21,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const {
-    candidates, removeCandidate, votedUsers,
+    candidates, addCandidate, removeCandidate, votedUsers,
     isAdmin, setIsAdmin, electionPhase, setElectionPhase,
     controllerCredentials, setControllerCredentials,
     nominations, updateNominationStatus,
-    registeredStudents, addStudent, addStudentsBulk, removeStudent,
+    registeredStudents, addStudent, addStudentsBulk, removeStudent, isLoading,
   } = useVoting();
 
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
-  const [newStudent, setNewStudent] = useState({ studentId: '', name: '', department: '', phone: '' });
+  const [newStudent, setNewStudent] = useState({ student_id: '', name: '', department: '', phone: '' });
   const [activeTab, setActiveTab] = useState('candidates');
   const [activeCandidateCategory, setActiveCandidateCategory] = useState<string | null>('General');
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +38,7 @@ const AdminDashboard = () => {
   // Pagination & Filtering
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<'name' | 'studentId' | 'department'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'student_id' | 'department'>('name');
   const [sortAsc, setSortAsc] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -50,14 +50,14 @@ const AdminDashboard = () => {
 
     if (search) {
       const q = search.toLowerCase();
-      records = records.filter(r => r.name.toLowerCase().includes(q) || r.studentId.toLowerCase().includes(q));
+      records = records.filter(r => r.name.toLowerCase().includes(q) || r.student_id.toLowerCase().includes(q));
     }
     if (deptFilter !== 'all') records = records.filter(r => r.department === deptFilter);
 
     records.sort((a, b) => {
       let cmp = 0;
       if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
-      else if (sortBy === 'studentId') cmp = a.studentId.localeCompare(b.studentId);
+      else if (sortBy === 'student_id') cmp = a.student_id.localeCompare(b.student_id);
       else if (sortBy === 'department') cmp = a.department.localeCompare(b.department);
       return sortAsc ? cmp : -cmp;
     });
@@ -68,25 +68,39 @@ const AdminDashboard = () => {
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
   const pagedStudents = filteredStudents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  if (!isAdmin) { navigate('/admin-login'); return null; }
+  useEffect(() => {
+    if (!isAdmin && !isLoading) {
+      navigate('/admin-login');
+    }
+  }, [isAdmin, isLoading, navigate]);
 
-  const handleRemoveCandidate = (id: string, name: string) => {
-    removeCandidate(id);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#112250]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#E0C58F] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) return null;
+
+  const handleRemoveCandidate = async (id: string, name: string) => {
+    await removeCandidate(id);
     toast({ title: 'Candidate Removed', description: `${name} has been removed.` });
   };
 
-  const handleAddStudent = () => {
-    if (!newStudent.studentId || !newStudent.name || !newStudent.department || !newStudent.phone) {
+  const handleAddStudent = async () => {
+    if (!newStudent.student_id || !newStudent.name || !newStudent.department || !newStudent.phone) {
       toast({ title: 'Missing Fields', description: 'Please fill in all fields.', variant: 'destructive' });
       return;
     }
-    if (registeredStudents.some(s => s.studentId === newStudent.studentId)) {
+    if (registeredStudents.some(s => s.student_id === newStudent.student_id)) {
       toast({ title: 'Already Exists', description: 'This student ID is already registered.', variant: 'destructive' });
       return;
     }
-    addStudent(newStudent);
+    await addStudent(newStudent);
     toast({ title: 'Student Added', description: `${newStudent.name} has been added to the voter list.` });
-    setNewStudent({ studentId: '', name: '', department: '', phone: '' });
+    setNewStudent({ student_id: '', name: '', department: '', phone: '' });
     setStudentDialogOpen(false);
   };
 
@@ -95,18 +109,18 @@ const AdminDashboard = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const text = event.target?.result as string;
       const lines = text.split('\n').filter(l => l.trim());
 
       // Skip header if it looks like one
-      const startIndex = lines[0]?.toLowerCase().includes('studentid') || lines[0]?.toLowerCase().includes('student_id') || lines[0]?.toLowerCase().includes('name') ? 1 : 0;
+      const startIndex = lines[0]?.toLowerCase().includes('student_id') || lines[0]?.toLowerCase().includes('name') ? 1 : 0;
 
       const students = [];
       for (let i = startIndex; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
         if (cols.length >= 4 && cols[0] && cols[1] && cols[2] && cols[3]) {
-          students.push({ studentId: cols[0], name: cols[1], department: cols[2], phone: cols[3] });
+          students.push({ student_id: cols[0], name: cols[1], department: cols[2], phone: cols[3] });
         }
       }
 
@@ -115,7 +129,7 @@ const AdminDashboard = () => {
         return;
       }
 
-      const { added, skipped } = addStudentsBulk(students);
+      const { added, skipped } = await addStudentsBulk(students);
       toast({
         title: 'CSV Import Complete',
         description: `${added} students added${skipped > 0 ? `, ${skipped} duplicates skipped` : ''}.`,
@@ -126,8 +140,8 @@ const AdminDashboard = () => {
     if (csvInputRef.current) csvInputRef.current.value = '';
   };
 
-  const handleRemoveStudent = (studentId: string, name: string) => {
-    removeStudent(studentId);
+  const handleRemoveStudent = async (studentId: string, name: string) => {
+    await removeStudent(studentId);
     toast({ title: 'Student Removed', description: `${name} has been removed from the voter list.` });
   };
 
@@ -140,8 +154,8 @@ const AdminDashboard = () => {
     toast({ title: 'Credentials Generated', description: 'Controller ID and Password created successfully.' });
   };
 
-  const handleNomination = (id: string, status: 'approved' | 'rejected') => {
-    updateNominationStatus(id, status);
+  const handleNomination = async (id: string, status: 'approved' | 'rejected') => {
+    await updateNominationStatus(id, status);
     toast({ title: status === 'approved' ? 'Nomination Approved' : 'Nomination Rejected', description: status === 'approved' ? 'Candidate has been added to the election.' : 'Nomination has been rejected.' });
   };
 
@@ -151,11 +165,15 @@ const AdminDashboard = () => {
     <div className="min-h-screen gradient-hero pb-8">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
-            <ArrowLeft className="h-5 w-5" /> Home
-          </button>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-destructive">
-            <LogOut className="h-5 w-5" /> Logout
+          <span className="font-medium">Admin Panel</span>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-muted-foreground transition-all hover:text-destructive group"
+          >
+            <span className="font-medium">Logout</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive/0 transition-all group-hover:bg-destructive/10 group-hover:translate-x-1">
+              <LogOut className="h-5 w-5" />
+            </div>
           </button>
         </div>
 
@@ -182,13 +200,78 @@ const AdminDashboard = () => {
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2"><Power className="h-5 w-5 text-primary" /> Election Phase Control</h3>
             <p className="text-sm text-muted-foreground mb-6">Changing the phase automatically restricts access to other areas of the system.</p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button onClick={() => { setElectionPhase('nomination'); toast({ title: 'Phase Updated', description: 'System is now in Nomination Phase.' }); }} variant={electionPhase === 'nomination' ? 'default' : 'outline'} className="flex-1">
+              <Button
+                onClick={() => setElectionPhase('nomination')}
+                variant={electionPhase === 'nomination' ? 'default' : 'outline'}
+                className={`flex-1 h-12 rounded-xl font-bold transition-all ${electionPhase === 'nomination' ? 'shadow-glow bg-[#112250] text-[#E0C58F] border-2 border-[#E0C58F]' : 'hover:border-[#1E4AA8]/50 text-muted-foreground'}`}
+              >
                 1. Nomination
               </Button>
-              <Button onClick={() => { setElectionPhase('voting'); toast({ title: 'Phase Updated', description: 'System is now in Voting Phase.' }); }} variant={electionPhase === 'voting' ? 'default' : 'outline'} className="flex-1">
+              <Button
+                onClick={async () => {
+                  const csCandidates = candidates.filter(c => c.department.toLowerCase() === 'computer science' || c.department.toUpperCase() === 'CS');
+                  const bbaCandidates = candidates.filter(c => c.department.toUpperCase() === 'BBA');
+                  const bcomCandidates = candidates.filter(c => c.department.toUpperCase() === 'BCOM');
+
+                  const missingCS = 2 - csCandidates.length;
+                  const missingBBA = 1 - bbaCandidates.length;
+                  const missingBCom = 2 - bcomCandidates.length;
+
+                  if (missingCS > 0 || missingBBA > 0 || missingBCom > 0) {
+                    if (missingCS > 0) {
+                      for (let i = 1; i <= missingCS; i++) {
+                        await addCandidate({
+                          name: `CS Candidate ${csCandidates.length + i}`,
+                          position: 'Department Representative',
+                          department: 'CS',
+                          party: 'Independent',
+                          online_votes: 0,
+                          offline_votes: 0
+                        });
+                      }
+                    }
+                    if (missingBBA > 0) {
+                      for (let i = 1; i <= missingBBA; i++) {
+                        await addCandidate({
+                          name: `BBA Candidate ${bbaCandidates.length + i}`,
+                          position: 'Department Representative',
+                          department: 'BBA',
+                          party: 'Independent',
+                          online_votes: 0,
+                          offline_votes: 0
+                        });
+                      }
+                    }
+                    if (missingBCom > 0) {
+                      for (let i = 1; i <= missingBCom; i++) {
+                        await addCandidate({
+                          name: `BCom Candidate ${bcomCandidates.length + i}`,
+                          position: 'Department Representative',
+                          department: 'BCOM',
+                          party: 'Independent',
+                          online_votes: 0,
+                          offline_votes: 0
+                        });
+                      }
+                    }
+                    toast({
+                      title: 'Candidates Added',
+                      description: 'Missing candidates were added automatically to meet department quotas.'
+                    });
+                  }
+
+                  await setElectionPhase('voting');
+                }}
+                variant={electionPhase === 'voting' ? 'default' : 'outline'}
+                className={`flex-1 h-12 rounded-xl font-bold transition-all ${electionPhase === 'voting' ? 'shadow-glow bg-[#112250] text-[#E0C58F] border-2 border-[#E0C58F]' : 'hover:border-[#1E4AA8]/50 text-muted-foreground'}`}
+              >
                 2. Voting
               </Button>
-              <Button onClick={() => { setElectionPhase('results'); toast({ title: 'Phase Updated', description: 'System is now in Results Phase.' }); }} variant={electionPhase === 'results' ? 'default' : 'outline'} className="flex-1">
+              <Button
+                onClick={() => setElectionPhase('results')}
+                variant={electionPhase === 'results' ? 'default' : 'outline'}
+                className={`flex-1 h-12 rounded-xl font-bold transition-all ${electionPhase === 'results' ? 'shadow-glow bg-[#E0C58F] text-[#112250] border-2 border-[#112250]' : 'hover:border-[#1E4AA8]/50 text-muted-foreground'}`}
+              >
                 3. Results
               </Button>
             </div>
@@ -197,23 +280,30 @@ const AdminDashboard = () => {
           <div className="rounded-2xl bg-card p-6 shadow-card border border-border/50">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2"><Key className="h-5 w-5 text-primary" /> Controller Access</h3>
             <p className="text-sm text-muted-foreground mb-4">Generate credentials for the offline election controllers. Share these securely.</p>
-            {controllerCredentials ? (
-              <div className="bg-muted/50 p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Controller ID</p>
-                  <p className="font-mono text-foreground font-semibold mb-2">{controllerCredentials.id}</p>
-                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Password</p>
-                  <p className="font-mono text-foreground font-semibold">{controllerCredentials.pass}</p>
+            <div className="flex-1">
+              {controllerCredentials ? (
+                <div className="bg-muted/30 border border-border/40 p-4 rounded-2xl flex items-center justify-between gap-4 transition-all hover:bg-muted/50">
+                  <div className="min-w-0 flex-1 flex gap-6">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Controller ID</p>
+                      <p className="font-mono text-sm text-foreground font-bold tracking-tight">{controllerCredentials.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Password</p>
+                      <p className="font-mono text-sm text-foreground font-bold tracking-tight">{controllerCredentials.pass}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={generateControllerCredentials} title="Regenerate" className="shrink-0 h-10 w-10 hover:bg-primary/10 hover:text-primary rounded-xl transition-all active:rotate-180 duration-500">
+                    <RefreshCw className="h-5 w-5" />
+                  </Button>
                 </div>
-                <Button variant="outline" size="icon" onClick={generateControllerCredentials} title="Regenerate">
-                  <RefreshCw className="h-4 w-4" />
+              ) : (
+                <Button onClick={generateControllerCredentials} variant="hero" className="w-full h-full min-h-[100px] shadow-glow-sm text-lg font-bold">
+                  Generate Controller Credentials
+                  <Key className="ml-3 h-5 w-5 animate-pulse" />
                 </Button>
-              </div>
-            ) : (
-              <Button onClick={generateControllerCredentials} variant="hero" className="w-full h-full min-h-[88px]">
-                Generate Controller Credentials
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -272,7 +362,7 @@ const AdminDashboard = () => {
                                       {candidate.party && (
                                         <>
                                           <span className="text-muted-foreground/30">•</span>
-                                          <span className="text-xs font-medium text-[#38a09e]">🏳 {candidate.party}</span>
+                                          <span className="text-xs font-bold text-[#1E4AA8]">🏳 {candidate.party}</span>
                                         </>
                                       )}
                                     </div>
@@ -332,7 +422,7 @@ const AdminDashboard = () => {
                     <DialogContent>
                       <DialogHeader><DialogTitle>Add Student to Voter List</DialogTitle></DialogHeader>
                       <div className="space-y-4 pt-4">
-                        <Input placeholder="Student ID *" value={newStudent.studentId} onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })} />
+                        <Input placeholder="Student ID *" value={newStudent.student_id} onChange={e => setNewStudent({ ...newStudent, student_id: e.target.value })} />
                         <Input placeholder="Full Name *" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
                         <Input placeholder="Department *" value={newStudent.department} onChange={e => setNewStudent({ ...newStudent, department: e.target.value })} />
                         <Input placeholder="Phone Number *" value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
@@ -384,7 +474,7 @@ const AdminDashboard = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="name">Name</SelectItem>
-                      <SelectItem value="studentId">ID</SelectItem>
+                      <SelectItem value="student_id">ID</SelectItem>
                       <SelectItem value="department">Department</SelectItem>
                     </SelectContent>
                   </Select>
@@ -409,13 +499,13 @@ const AdminDashboard = () => {
                     </TableHeader>
                     <TableBody>
                       {pagedStudents.map(student => (
-                        <TableRow key={student.studentId} className="hover:bg-muted/30">
-                          <TableCell className="font-medium text-foreground">{student.studentId}</TableCell>
+                        <TableRow key={student.student_id} className="hover:bg-muted/30">
+                          <TableCell className="font-medium text-foreground">{student.student_id}</TableCell>
                           <TableCell className="text-foreground">{student.name}</TableCell>
                           <TableCell className="text-muted-foreground">{student.department}</TableCell>
                           <TableCell className="text-muted-foreground">{student.phone}</TableCell>
                           <TableCell>
-                            {votedUsers.includes(student.studentId) ? (
+                            {votedUsers.includes(student.student_id) ? (
                               <Badge variant="default" className="bg-primary/90">Voted</Badge>
                             ) : (
                               <Badge variant="secondary" className="bg-muted text-muted-foreground">Not Voted</Badge>
@@ -433,7 +523,7 @@ const AdminDashboard = () => {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleRemoveStudent(student.studentId, student.name)}>Remove</AlertDialogAction>
+                                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleRemoveStudent(student.student_id, student.name)}>Remove</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -477,47 +567,56 @@ const AdminDashboard = () => {
               {nominations.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">No nominations submitted yet.</p>
               ) : (
-                nominations.map(nom => (
-                  <div key={nom.id} className="rounded-2xl bg-card p-5 shadow-card space-y-3">
+                nominations.map(nomination => (
+                  <div key={nomination.id} className="rounded-2xl bg-card p-5 shadow-card space-y-3">
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-xl flex items-center justify-center bg-primary/10 text-primary font-bold text-2xl border border-primary/20 shrink-0">
-                        {nom.name.charAt(0).toUpperCase()}
+                        {nomination.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-foreground">{nom.name}</p>
-                          <Badge variant={nom.status === 'approved' ? 'default' : nom.status === 'rejected' ? 'destructive' : 'secondary'}>
-                            {nom.status}
+                          <p className="font-semibold text-foreground">{nomination.name}</p>
+                          <Badge variant={nomination.status === 'approved' ? 'default' : nomination.status === 'rejected' ? 'destructive' : 'secondary'}>
+                            {nomination.status}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-0.5">{nom.position} • {nom.department}</p>
-                        {nom.party && (
-                          <p className="text-sm font-medium text-[#38a09e] mt-0.5">🏳 {nom.party}</p>
+                        <p className="text-sm text-muted-foreground mt-0.5">{nomination.position} • {nomination.department}</p>
+                        {nomination.party && (
+                          <p className="text-sm font-bold text-[#1E4AA8] mt-0.5">🏳 {nomination.party}</p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1">ID: {nom.studentId} • Submitted: {new Date(nom.submittedAt).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground mt-1">ID: {nomination.student_id} • Submitted: {new Date(nomination.submitted_at).toLocaleDateString()}</p>
                       </div>
-                      {nom.status === 'pending' && (
+                      {nomination.status === 'pending' && (
                         <div className="flex gap-2">
-                          <Button variant="hero" size="sm" onClick={() => handleNomination(nom.id, 'approved')}>
+                          <Button variant="hero" size="sm" onClick={() => handleNomination(nomination.id, 'approved')}>
                             <FileCheck className="mr-1 h-4 w-4" /> Approve
                           </Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleNomination(nom.id, 'rejected')}>
+                          <Button variant="destructive" size="sm" onClick={() => handleNomination(nomination.id, 'rejected')}>
                             <FileX className="mr-1 h-4 w-4" /> Reject
                           </Button>
                         </div>
                       )}
                     </div>
-                    {/* Documents section */}
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-border/30">
-                      {nom.applicationFormName && (
-                        <button onClick={() => setViewingImage(nom.applicationFormUrl)} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors">
-                          <Eye className="h-3 w-3" /> Application Form
-                        </button>
+                      {nomination.application_form_url && (
+                        <a
+                          href={nomination.application_form_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                        >
+                          <FileText className="h-3 w-3" /> Application Form
+                        </a>
                       )}
-                      {nom.marklistName && (
-                        <button onClick={() => setViewingImage(nom.marklistUrl)} className="flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors">
-                          <Eye className="h-3 w-3" /> Marklist
-                        </button>
+                      {nomination.marklist_url && (
+                        <a
+                          href={nomination.marklist_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-muted/50 px-3 py-1.5 text-xs text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                        >
+                          <FileText className="h-3 w-3" /> Marklist
+                        </a>
                       )}
                     </div>
                   </div>

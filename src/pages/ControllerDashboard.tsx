@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Search, Filter, CheckCircle2, Circle, Globe, Users, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { LogOut, Search, Filter, CheckCircle2, Circle, Globe, Users, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useVoting } from '@/contexts/VotingContext';
@@ -20,14 +20,14 @@ import {
 
 const ControllerDashboard = () => {
   const navigate = useNavigate();
-  const { offlineRecords, markOfflineVote, unmarkOfflineVote, isController, setIsController, votedUsers, candidates, addOfflineVotesForCandidate } = useVoting();
+  const { offlineRecords, markOfflineVote, unmarkOfflineVote, isController, setIsController, votedUsers, candidates, addOfflineVotesForCandidate, addOfflineNota, isLoading } = useVoting();
 
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'name' | 'department' | 'status'>('name');
   const [sortAsc, setSortAsc] = useState(true);
-  const [confirmAction, setConfirmAction] = useState<{ studentId: string; studentName: string; action: 'mark' | 'unmark' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ student_id: string; studentName: string; action: 'mark' | 'unmark' } | null>(null);
   const [offlineInput, setOfflineInput] = useState<Record<string, string>>({});
   const [submittedCandidates, setSubmittedCandidates] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -41,12 +41,12 @@ const ControllerDashboard = () => {
   const filteredRecords = useMemo(() => {
     let records = offlineRecords.map(r => ({
       ...r,
-      votedOnline: r.votedOnline || votedUsers.includes(r.studentId),
+      votedOnline: r.votedOnline || votedUsers.includes(r.student_id),
     }));
 
     if (search) {
       const q = search.toLowerCase();
-      records = records.filter(r => r.studentName.toLowerCase().includes(q) || r.studentId.toLowerCase().includes(q));
+      records = records.filter(r => r.studentName.toLowerCase().includes(q) || r.student_id.toLowerCase().includes(q));
     }
     if (deptFilter !== 'all') records = records.filter(r => r.department === deptFilter);
     if (statusFilter === 'online') records = records.filter(r => r.votedOnline);
@@ -68,7 +68,7 @@ const ControllerDashboard = () => {
   }, [offlineRecords, votedUsers, search, deptFilter, statusFilter, sortBy, sortAsc]);
 
   const stats = useMemo(() => {
-    const all = offlineRecords.map(r => ({ ...r, votedOnline: r.votedOnline || votedUsers.includes(r.studentId) }));
+    const all = offlineRecords.map(r => ({ ...r, votedOnline: r.votedOnline || votedUsers.includes(r.student_id) }));
     return {
       total: all.length,
       online: all.filter(r => r.votedOnline).length,
@@ -94,23 +94,37 @@ const ControllerDashboard = () => {
   // Set default active position once positions are known
   const resolvedActive = activePosition && positionKeys.includes(activePosition) ? activePosition : positionKeys[0] || '';
 
-  if (!isController) { navigate('/controller-login'); return null; }
+  useEffect(() => {
+    if (!isController && !isLoading) {
+      navigate('/controller-login');
+    }
+  }, [isController, isLoading, navigate]);
 
-  const handleToggle = (studentId: string, studentName: string, currentlyMarked: boolean, votedOnline: boolean) => {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#112250]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#E0C58F] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isController) return null;
+
+  const handleToggle = (student_id: string, studentName: string, currentlyMarked: boolean, votedOnline: boolean) => {
     if (votedOnline) {
       toast({ title: 'Cannot Mark', description: 'This student has already voted online.', variant: 'destructive' });
       return;
     }
-    setConfirmAction({ studentId, studentName, action: currentlyMarked ? 'unmark' : 'mark' });
+    setConfirmAction({ student_id, studentName, action: currentlyMarked ? 'unmark' : 'mark' });
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!confirmAction) return;
     if (confirmAction.action === 'mark') {
-      markOfflineVote(confirmAction.studentId, 'Controller');
+      await markOfflineVote(confirmAction.student_id, 'Controller');
       toast({ title: 'Marked', description: `${confirmAction.studentName} marked as voted offline.` });
     } else {
-      unmarkOfflineVote(confirmAction.studentId);
+      await unmarkOfflineVote(confirmAction.student_id);
       toast({ title: 'Unmarked', description: `Offline vote marking removed for ${confirmAction.studentName}.` });
     }
     setConfirmAction(null);
@@ -127,11 +141,15 @@ const ControllerDashboard = () => {
     <div className="min-h-screen gradient-hero pb-8">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground">
-            <ArrowLeft className="h-5 w-5" /> Home
-          </button>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-destructive">
-            <LogOut className="h-5 w-5" /> Logout
+          <span className="font-medium">Controller Panel</span>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-muted-foreground transition-all hover:text-destructive group"
+          >
+            <span className="font-medium">Logout</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive/0 transition-all group-hover:bg-destructive/10 group-hover:translate-x-1">
+              <LogOut className="h-5 w-5" />
+            </div>
           </button>
         </div>
 
@@ -189,77 +207,79 @@ const ControllerDashboard = () => {
         </div>
 
         {/* Table */}
-        <div className="mt-6 rounded-2xl bg-card shadow-card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[60px] text-center">No.</TableHead>
-                <TableHead className="cursor-pointer" onClick={() => toggleSort('name')}>
-                  Student <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => toggleSort('department')}>
-                  Department <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                </TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
-                  Status <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                </TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pagedRecords.map((record, index) => (
-                <TableRow key={record.studentId}>
-                  <TableCell className="text-center">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
-                      {(currentPage - 1) * PAGE_SIZE + index + 1}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-foreground">{record.studentName}</p>
-                      <p className="text-xs text-muted-foreground">{record.studentId}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{record.department}</TableCell>
-                  <TableCell className="text-muted-foreground">{record.phone}</TableCell>
-                  <TableCell>
-                    {record.votedOnline ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                        <Globe className="h-3 w-3" /> Online
-                      </span>
-                    ) : record.markedOffline ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent-foreground">
-                        <CheckCircle2 className="h-3 w-3" /> Offline
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                        <Circle className="h-3 w-3" /> Pending
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {record.votedOnline ? (
-                      <span className="text-xs text-muted-foreground">Online voter</span>
-                    ) : (
-                      <Button
-                        variant={record.markedOffline ? 'destructive' : 'hero'}
-                        size="sm"
-                        onClick={() => handleToggle(record.studentId, record.studentName, record.markedOffline, record.votedOnline)}
-                      >
-                        {record.markedOffline ? 'Unmark' : 'Mark Voted'}
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredRecords.length === 0 && (
+        <div className="mt-6 rounded-2xl bg-card shadow-card overflow-hidden border border-border/40">
+          <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+            <Table className="relative">
+              <TableHeader className="sticky top-0 bg-card/95 backdrop-blur z-10 shadow-sm">
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No students found.</TableCell>
+                  <TableHead className="w-[60px] text-center">No.</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => toggleSort('name')}>
+                    Student <ArrowUpDown className="inline h-3 w-3 ml-1" />
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => toggleSort('department')}>
+                    Department <ArrowUpDown className="inline h-3 w-3 ml-1" />
+                  </TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
+                    Status <ArrowUpDown className="inline h-3 w-3 ml-1" />
+                  </TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {pagedRecords.map((record, index) => (
+                  <TableRow key={record.student_id}>
+                    <TableCell className="text-center">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                        {(currentPage - 1) * PAGE_SIZE + index + 1}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-foreground">{record.studentName}</p>
+                        <p className="text-xs text-muted-foreground">{record.student_id}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{record.department}</TableCell>
+                    <TableCell className="text-muted-foreground">{record.phone}</TableCell>
+                    <TableCell>
+                      {record.votedOnline ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                          <Globe className="h-3 w-3" /> Online
+                        </span>
+                      ) : record.markedOffline ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent-foreground">
+                          <CheckCircle2 className="h-3 w-3" /> Offline
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                          <Circle className="h-3 w-3" /> Pending
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {record.votedOnline ? (
+                        <span className="text-xs text-muted-foreground">Online voter</span>
+                      ) : (
+                        <Button
+                          variant={record.markedOffline ? 'destructive' : 'hero'}
+                          size="sm"
+                          onClick={() => handleToggle(record.student_id, record.studentName, record.markedOffline, record.votedOnline)}
+                        >
+                          {record.markedOffline ? 'Unmark' : 'Mark Voted'}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredRecords.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No students found.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         {/* Pagination */}
@@ -318,13 +338,11 @@ const ControllerDashboard = () => {
                 return (
                   <div key={candidate.id} className="rounded-2xl bg-card shadow-card p-5 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
-                      <img src={candidate.image} alt={candidate.name} className="w-12 h-12 rounded-full object-cover border-2 border-border" />
                       <div>
                         <p className="font-semibold text-foreground text-sm">{candidate.name}</p>
                         <p className="text-xs text-muted-foreground">{candidate.department}</p>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">Online votes so far: <span className="font-bold text-primary">{candidate.votes}</span></div>
                     {submitted ? (
                       <div className="flex items-center gap-2 text-sm font-medium text-accent-foreground bg-accent/20 rounded-xl px-4 py-2">
                         <CheckCircle2 className="h-4 w-4" /> Offline votes submitted!
@@ -359,52 +377,67 @@ const ControllerDashboard = () => {
                 );
               })}
 
-              {/* NOTA Card */}
+              {/* NOTA Section */}
               {(() => {
-                const notaId = `nota-offline-${resolvedActive}`;
-                const submitted = submittedCandidates.has(notaId);
-                return (
-                  <div className="rounded-2xl bg-card shadow-card p-5 flex flex-col gap-3 border-2 border-dashed border-muted-foreground/20">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30 text-xl">✗</div>
-                      <div>
-                        <p className="font-semibold text-foreground text-sm">NOTA</p>
-                        <p className="text-xs text-destructive font-medium">None Of The Above</p>
+                const isDeptRep = resolvedActive === 'Department Representative';
+                const targets = isDeptRep ? departments : ['Global'];
+
+                return targets.map(target => {
+                  const notaId = isDeptRep ? `nota-offline-${resolvedActive}-${target}` : `nota-offline-${resolvedActive}`;
+                  const submitted = submittedCandidates.has(notaId);
+                  const displayName = isDeptRep ? `NOTA (${target})` : 'NOTA';
+
+                  return (
+                    <div key={notaId} className="rounded-2xl bg-card shadow-card p-5 flex flex-col gap-3 border-2 border-dashed border-muted-foreground/20">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30 text-xl font-bold text-muted-foreground">✗</div>
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">{displayName}</p>
+                          <p className="text-xs text-destructive font-medium">None Of The Above</p>
+                        </div>
                       </div>
+                      <div className="text-xs text-muted-foreground flex-1">
+                        Offline NOTA ballots for {isDeptRep ? <span className="font-semibold text-primary">{target}</span> : <span className="font-semibold">{resolvedActive}</span>}
+                      </div>
+                      {submitted ? (
+                        <div className="flex items-center gap-2 text-sm font-medium text-accent-foreground bg-accent/20 rounded-xl px-4 py-2">
+                          <CheckCircle2 className="h-4 w-4" /> Submitted!
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="Count"
+                            value={offlineInput[notaId] || ''}
+                            onChange={(e) => setOfflineInput(prev => ({ ...prev, [notaId]: e.target.value }))}
+                            className="flex-1 text-sm h-9"
+                          />
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              const count = parseInt(offlineInput[notaId] || '0', 10);
+                              if (!count || count <= 0) {
+                                toast({ title: 'Invalid Count', description: 'Enter a valid number greater than 0.', variant: 'destructive' });
+                                return;
+                              }
+                              setOfflineConfirm({
+                                id: notaId,
+                                name: isDeptRep ? `NOTA - ${target}` : `NOTA (${resolvedActive})`,
+                                count,
+                                isNota: true
+                              });
+                            }}
+                            className="h-9 px-3"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground">Offline NOTA ballots for <span className="font-semibold">{resolvedActive}</span></div>
-                    {submitted ? (
-                      <div className="flex items-center gap-2 text-sm font-medium text-accent-foreground bg-accent/20 rounded-xl px-4 py-2">
-                        <CheckCircle2 className="h-4 w-4" /> NOTA submitted!
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="No. of NOTA votes"
-                          value={offlineInput[notaId] || ''}
-                          onChange={(e) => setOfflineInput(prev => ({ ...prev, [notaId]: e.target.value }))}
-                          className="flex-1 text-sm"
-                        />
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => {
-                            const count = parseInt(offlineInput[notaId] || '0', 10);
-                            if (!count || count <= 0) {
-                              toast({ title: 'Invalid Count', description: 'Enter a valid number greater than 0.', variant: 'destructive' });
-                              return;
-                            }
-                            setOfflineConfirm({ id: notaId, name: `NOTA (${resolvedActive})`, count, isNota: true });
-                          }}
-                        >
-                          Add
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                );
+                  );
+                });
               })()}
             </div>
           )}
@@ -455,10 +488,13 @@ const ControllerDashboard = () => {
             <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="rounded-xl"
-              onClick={() => {
+              onClick={async () => {
                 if (!offlineConfirm) return;
                 if (!offlineConfirm.isNota) {
-                  addOfflineVotesForCandidate(offlineConfirm.id, offlineConfirm.count);
+                  await addOfflineVotesForCandidate(offlineConfirm.id, offlineConfirm.count);
+                } else {
+                  const position = offlineConfirm.id.replace('nota-offline-', '');
+                  await addOfflineNota(position, offlineConfirm.count);
                 }
                 setSubmittedCandidates(prev => new Set([...prev, offlineConfirm.id]));
                 toast({ title: 'Votes Recorded', description: `${offlineConfirm.count} offline vote(s) recorded for ${offlineConfirm.name}.` });

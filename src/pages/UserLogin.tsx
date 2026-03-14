@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Phone, Send, ShieldCheck, Fingerprint, KeyRound } from 'lucide-react';
+import { Phone, Send, ShieldCheck, Fingerprint, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IdCardScanner } from '@/components/IdCardScanner';
@@ -13,10 +13,16 @@ type Step = 'scan' | 'phone' | 'otp';
 const UserLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setCurrentUser, votedUsers, isStudentRegistered, registeredStudents } = useVoting();
+  const { currentUser, setCurrentUser, votedUsers, isStudentRegistered, registeredStudents } = useVoting();
   const [step, setStep] = useState<Step>('scan');
   const redirectTo = searchParams.get('redirect') === 'nominate' ? '/nominate' : '/vote';
-  const [studentId, setStudentId] = useState('');
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate(redirectTo);
+    }
+  }, [currentUser, navigate, redirectTo]);
+  const [student_id, setStudentId] = useState('');
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -67,12 +73,12 @@ const UserLogin = () => {
 
   const handleOtpComplete = (otp: string) => {
     if (otp.length === 6) {
-      const student = registeredStudents.find(s => s.studentId === studentId);
+      const student = registeredStudents.find(s => s.student_id === student_id);
       setCurrentUser({
         id: Date.now().toString(),
-        studentId,
+        student_id: student_id,
         name: student?.name || 'Student User',
-        hasVoted: false,
+        hasVoted: votedUsers.includes(student_id),
         department: student?.department || 'General',
       });
 
@@ -96,17 +102,7 @@ const UserLogin = () => {
       <div className="absolute bottom-20 right-10 w-80 h-80 bg-accent/15 rounded-full blur-3xl" />
 
       <div className="container mx-auto px-4 py-8 relative z-10">
-        <button
-          onClick={() => {
-            if (step === 'scan') navigate(-1 as any);
-            else if (step === 'phone') setStep('scan');
-            else if (step === 'otp') setStep('phone');
-          }}
-          className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground group"
-        >
-          <ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
-          Back
-        </button>
+        <div className="pt-4" />
 
         <div className="mx-auto mt-8 max-w-md">
           {/* Progress Steps */}
@@ -118,20 +114,20 @@ const UserLogin = () => {
                   <div className="flex flex-col items-center gap-2">
                     <div
                       className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-semibold transition-all duration-300 ${step === ['scan', 'phone', 'otp'][i]
-                        ? 'gradient-primary text-primary-foreground shadow-glow scale-110'
+                        ? 'bg-[#112250] text-white shadow-[0_0_20px_rgba(17,34,80,0.3)] scale-110 border-2 border-[#E0C58F]'
                         : i < stepIndex
-                          ? 'bg-primary text-primary-foreground'
+                          ? 'bg-[#E0C58F] text-[#112250]'
                           : 'glass-card text-muted-foreground'
                         }`}
                     >
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className={`text-xs font-medium ${step === ['scan', 'phone', 'otp'][i] ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <span className={`text-xs font-bold ${step === ['scan', 'phone', 'otp'][i] ? 'text-[#112250]' : 'text-muted-foreground'}`}>
                       {label}
                     </span>
                   </div>
                   {i < 2 && (
-                    <div className={`w-12 h-0.5 rounded-full mb-6 transition-colors ${i < stepIndex ? 'bg-primary' : 'bg-border'}`} />
+                    <div className={`w-12 h-0.5 rounded-full mb-6 transition-colors ${i < stepIndex ? 'bg-[#E0C58F]' : 'bg-border'}`} />
                   )}
                 </div>
               );
