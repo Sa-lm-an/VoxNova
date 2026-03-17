@@ -504,26 +504,41 @@ export function VotingProvider({ children }: { children: ReactNode }) {
   const handleSetElectionPhase = async (phase: ElectionPhase) => {
     try {
       if (electionPhase === 'results' && phase !== 'results') {
-        console.log('🔄 Starting robust election reset...');
+        console.log('🔄 Starting ultra-robust election reset...');
 
         // 1. Reset Candidates
         const { error: candError } = await supabase
           .from('candidates')
           .update({ votes: 0, online_votes: 0, offline_votes: 0 })
-          .neq('name', '___NON_EXISTENT___'); // Effective way to target all
+          .not('id', 'is', null);
+          
         if (candError) {
-          console.error('❌ Failed to reset candidates:', candError);
-          throw new Error('Candidate reset failed');
+          console.warn('⚠️ Bulk candidate reset failed, trying individual reset fallback...', candError);
+          // Fallback: Fetch all IDs and update one by one
+          const { data: candIds } = await supabase.from('candidates').select('id');
+          if (candIds) {
+            for (const { id } of candIds) {
+              await supabase.from('candidates').update({ votes: 0, online_votes: 0, offline_votes: 0 }).eq('id', id);
+            }
+          } else {
+            throw new Error('Candidate reset totally failed: Could not even fetch IDs');
+          }
         }
 
         // 2. Clear Voted Users
         const { error: voteError } = await supabase
           .from('voted_users')
           .delete()
-          .neq('student_id', '___NON_EXISTENT___');
+          .not('student_id', 'is', null);
+          
         if (voteError) {
           console.error('❌ Failed to clear voted users:', voteError);
-          throw new Error('Voted users clearing failed');
+          toast({ 
+            title: 'Voter List Reset Failed', 
+            description: voteError.message, 
+            variant: 'destructive' 
+          });
+          throw new Error('Database error: Voter reset failed');
         }
 
         // 3. Reset Offline Records
@@ -535,24 +550,28 @@ export function VotingProvider({ children }: { children: ReactNode }) {
             marked_at: null,
             marked_by: null
           })
-          .neq('student_id', '___NON_EXISTENT___');
+          .not('student_id', 'is', null);
+          
         if (offlineError) {
           console.error('❌ Failed to reset offline records:', offlineError);
-          throw new Error('Offline records reset failed');
+          toast({ 
+            title: 'Offline Records Reset Failed', 
+            description: offlineError.message, 
+            variant: 'destructive' 
+          });
+          throw new Error('Database error: Offline records reset failed');
         }
 
         // 4. Reset NOTA counts in election_config
-        const { data: configData, error: configFetchError } = await supabase
-          .from('election_config')
-          .select('key');
-
-        if (configFetchError) {
-          console.error('❌ Failed to fetch NOTA keys:', configFetchError);
-        } else {
-          const notaKeys = configData?.filter(c => c.key.startsWith('nota_')).map(c => c.key) || [];
-          for (const key of notaKeys) {
-            await supabase.from('election_config').update({ value: '0' }).eq('key', key);
-          }
+        try {
+          const { error: notaError } = await supabase
+            .from('election_config')
+            .update({ value: '0' })
+            .like('key', 'nota_%');
+            
+          if (notaError) console.error('⚠️ Failed to reset NOTA keys:', notaError);
+        } catch (e) {
+          console.warn('⚠️ Manual NOTA reset failed, skipping...', e);
         }
 
         // 5. Update local state

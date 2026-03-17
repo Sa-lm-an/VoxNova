@@ -10,7 +10,7 @@ const LogoImg = () => (
         <img
             src={logoImg}
             alt="VoxNova 3D Logo Icon"
-            className="w-[120%] h-[120%] max-w-none object-contain pointer-events-none drop-shadow-md"
+            className="w-[100%] h-[100%] max-w-none object-contain pointer-events-none drop-shadow-md"
         />
     </div>
 );

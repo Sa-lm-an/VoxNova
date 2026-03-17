@@ -41,7 +41,7 @@ const ControllerLogin = () => {
         <div className="pt-4" />
 
         <div className="mx-auto mt-16 max-w-md">
-          <div className="rounded-3xl bg-card p-8 shadow-elevated animate-scale-in">
+          <div className="rounded-3xl bg-card p-8 shadow-elevated animate-scale-in -translate-y-0.5">
             <div className="mb-8 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary shadow-lg">
                 <ClipboardCheck className="h-8 w-8 text-primary-foreground" />

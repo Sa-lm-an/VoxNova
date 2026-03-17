@@ -177,17 +177,17 @@ const AdminDashboard = () => {
           </button>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 animate-slide-up -translate-y-0.5">
           <h2 className="font-display text-3xl font-bold text-foreground">Admin Dashboard</h2>
           <p className="mt-2 text-muted-foreground">Manage candidates, students, nominations & elections</p>
         </div>
 
         {/* Stats */}
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-2xl bg-card p-5 shadow-card"><Users className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{candidates.length}</p><p className="text-sm text-muted-foreground">Candidates</p></div>
-          <div className="rounded-2xl bg-card p-5 shadow-card"><UserPlus className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{registeredStudents.length}</p><p className="text-sm text-muted-foreground">Registered Students</p></div>
-          <div className="rounded-2xl bg-card p-5 shadow-card"><Vote className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{votedUsers.length}</p><p className="text-sm text-muted-foreground">Voters</p></div>
-          <div className="rounded-2xl bg-primary/10 p-5 shadow-card">
+        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 animate-slide-up -translate-y-0.5">
+          <div className="rounded-2xl bg-card p-5 shadow-card hover:shadow-elevated transition-shadow"><Users className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{candidates.length}</p><p className="text-sm text-muted-foreground">Candidates</p></div>
+          <div className="rounded-2xl bg-card p-5 shadow-card hover:shadow-elevated transition-shadow"><UserPlus className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{registeredStudents.length}</p><p className="text-sm text-muted-foreground">Registered Students</p></div>
+          <div className="rounded-2xl bg-card p-5 shadow-card hover:shadow-elevated transition-shadow"><Vote className="h-6 w-6 text-primary" /><p className="mt-2 font-display text-2xl font-bold text-foreground">{votedUsers.length}</p><p className="text-sm text-muted-foreground">Voters</p></div>
+          <div className="rounded-2xl bg-primary/10 p-5 shadow-card hover:shadow-elevated transition-shadow">
             <ShieldCheck className="h-6 w-6 text-primary" />
             <p className="mt-2 font-display text-2xl font-bold text-foreground capitalize">{electionPhase}</p>
             <p className="text-sm text-muted-foreground">Current Phase</p>
@@ -195,7 +195,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Phase Controls & Controller Auth */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up -translate-y-0.5">
           <div className="rounded-2xl bg-card p-6 shadow-card border border-border/50">
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2"><Power className="h-5 w-5 text-primary" /> Election Phase Control</h3>
             <p className="text-sm text-muted-foreground mb-6">Changing the phase automatically restricts access to other areas of the system.</p>
@@ -308,7 +308,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8 animate-slide-up -translate-y-0.5">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="candidates">Candidates</TabsTrigger>
             <TabsTrigger value="students">

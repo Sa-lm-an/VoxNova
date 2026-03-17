@@ -37,10 +37,10 @@ const Login = () => {
         <div className="pt-4" />
 
         <div className="mx-auto mt-12 max-w-md text-center">
-          <h2 className="font-display text-3xl font-bold text-foreground animate-slide-up">
+          <h2 className="font-display text-3xl font-bold text-foreground animate-slide-up -translate-y-0.5">
             Select Your Role
           </h2>
-          <p className="mt-2 text-muted-foreground animate-slide-up">
+          <p className="mt-2 text-muted-foreground animate-slide-up -translate-y-0.5">
             Choose how you'd like to sign in
           </p>
 
@@ -49,7 +49,7 @@ const Login = () => {
               <button
                 key={opt.title}
                 onClick={() => navigate(opt.path)}
-                className="group flex items-center gap-5 rounded-2xl bg-card p-5 shadow-card border border-border/40 text-left transition-all hover:shadow-elevated hover:-translate-y-0.5 active:scale-[0.98]"
+                className="group flex items-center gap-5 rounded-2xl bg-card p-5 shadow-card border border-border/40 text-left transition-all hover:shadow-elevated hover:-translate-y-0.5 active:scale-[0.98] -translate-y-0.5"
               >
                 <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${opt.gradient} ${opt.shadow} transition-transform group-hover:scale-110`}>
                   <opt.icon className="h-7 w-7 text-primary-foreground" />
