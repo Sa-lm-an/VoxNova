@@ -442,14 +442,22 @@ export function VotingProvider({ children }: { children: ReactNode }) {
     try {
       const candidate = candidates.find(c => c.id === candidateId);
       if (candidate) {
+        const newOffline = (candidate.offline_votes || 0) + count;
+        const newTotal = (candidate.votes || 0) + count;
+        
         const { error } = await supabase.from('candidates').update({
-          offline_votes: (candidate.offline_votes || 0) + count,
-          votes: (candidate.votes || 0) + count
+          offline_votes: newOffline,
+          votes: newTotal
         }).eq('id', candidateId);
+        
         if (error) throw error;
+        toast({ title: 'Success', description: `${count} vote(s) added to ${candidate.name}.` });
+      } else {
+        throw new Error('Candidate not found');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding offline votes:', error);
+      toast({ title: 'Update Failed', description: error.message || 'Check database permissions.', variant: 'destructive' });
     }
   };
 
@@ -467,8 +475,10 @@ export function VotingProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       setNotaVotes(prev => ({ ...prev, [notaKey]: newCount }));
-    } catch (error) {
+      toast({ title: 'Success', description: `${count} vote(s) added to NOTA (${position}).` });
+    } catch (error: any) {
       console.error('Error adding offline NOTA:', error);
+      toast({ title: 'Update Failed', description: error.message || 'Check database permissions.', variant: 'destructive' });
     }
   };
 
@@ -644,6 +654,43 @@ export function VotingProvider({ children }: { children: ReactNode }) {
         }
 
         console.log('✅ Robust election reset complete.');
+      }
+
+      if (phase === 'results') {
+        console.log('📊 Finalizing election results: Auto-calculating NOTA for non-voters...');
+        
+        // 1. Identify non-voters (those who did not vote online AND were not marked offline)
+        // Note: students who were marked offline but box count is lower are handled elsewhere or ignored
+        const votedOnlineSet = new Set(votedUsers);
+        const nonVoters = registeredStudents.filter(s => 
+          !votedOnlineSet.has(s.student_id) && 
+          !offlineRecords.find(r => r.student_id === s.student_id)?.markedOffline
+        );
+        
+        console.log(`📉 Found ${nonVoters.length} non-voters.`);
+
+        if (nonVoters.length > 0) {
+          // 2. Identify all departments
+          const depts = [...new Set(registeredStudents.map(s => s.department))];
+          
+          // 3. Increment NOTA for each position category
+          for (const pos of POSITIONS) {
+            if (pos === 'Department Representative') {
+              for (const dept of depts) {
+                const deptNonVoters = nonVoters.filter(s => s.department === dept).length;
+                if (deptNonVoters > 0) {
+                  const key = `nota_${pos}_${dept}`;
+                  const current = notaVotes[`${pos}_${dept}`] || 0;
+                  await supabase.from('election_config').upsert({ key, value: (current + deptNonVoters).toString() });
+                }
+              }
+            } else {
+              const key = `nota_${pos}`;
+              const current = notaVotes[pos] || 0;
+              await supabase.from('election_config').upsert({ key, value: (current + nonVoters.length).toString() });
+            }
+          }
+        }
       }
 
       // Finally update the phase

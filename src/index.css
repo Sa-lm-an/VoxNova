@@ -148,7 +148,7 @@
     position: absolute;
     inset: 0;
     background: var(--gradient-mesh);
-    /* opacity: 0.6; */
+    opacity: 0.6;
     pointer-events: none;
   }
 

@@ -113,6 +113,56 @@ const ControllerDashboard = () => {
   // Set default active position once positions are known
   const resolvedActive = activePosition && positionKeys.includes(activePosition) ? activePosition : positionKeys[0] || '';
 
+  const totalMarkedOffline = useMemo(() => {
+    return offlineRecords.filter(r => r.markedOffline).length;
+  }, [offlineRecords]);
+
+  const totalOnlineVoters = useMemo(() => {
+    return votedUsers.length;
+  }, [votedUsers]);
+
+  const quotaInfo = useMemo(() => {
+    if (!resolvedActive) return { used: 0, remaining: 0 };
+    
+    // 1. Calculate offline votes for candidates in this position
+    const candidateOfflineVotes = (candidatesByPosition[resolvedActive] || [])
+      .reduce((sum, c) => sum + (c.offline_votes || 0), 0);
+    
+    // 2. Calculate offline NOTA for this position
+    // We derive it by: TotalNOTA (from DB) - OnlineNOTA
+    const getOfflineNotaForTarget = (target?: string) => {
+      const notaKey = target ? `${resolvedActive}_${target}` : resolvedActive;
+      const totalNota = useVoting().notaVotes[notaKey] || 0;
+      
+      // Online NOTA in this target = (Total Online Voters in target) - (Total Candidate Online Votes in target)
+      let onlineVotersInTarget = totalOnlineVoters;
+      let candidateOnlineVotesInTarget = (candidatesByPosition[resolvedActive] || [])
+        .reduce((sum, c) => sum + (c.online_votes || 0), 0);
+        
+      if (resolvedActive === 'Department Representative' && target) {
+        onlineVotersInTarget = offlineRecords.filter(r => r.votedOnline && r.department === target).length;
+        candidateOnlineVotesInTarget = (candidatesByPosition[resolvedActive] || [])
+          .filter(c => c.department === target)
+          .reduce((sum, c) => sum + (c.online_votes || 0), 0);
+      }
+      
+      const onlineNota = Math.max(0, onlineVotersInTarget - candidateOnlineVotesInTarget);
+      return Math.max(0, totalNota - onlineNota);
+    };
+
+    let totalOfflineLocked = candidateOfflineVotes;
+    if (resolvedActive === 'Department Representative') {
+      departments.forEach(d => { totalOfflineLocked += getOfflineNotaForTarget(d); });
+    } else {
+      totalOfflineLocked += getOfflineNotaForTarget();
+    }
+
+    return {
+      used: totalOfflineLocked,
+      remaining: Math.max(0, totalMarkedOffline - totalOfflineLocked)
+    };
+  }, [resolvedActive, candidatesByPosition, totalOnlineVoters, totalMarkedOffline, departments, offlineRecords]);
+
   useEffect(() => {
     if (!isController && !isLoading) {
       navigate('/controller-login');
@@ -179,22 +229,22 @@ const ControllerDashboard = () => {
 
         {/* Stats */}
         <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-2xl bg-card p-5 shadow-card">
+          <div className="rounded-2xl bg-card/80 backdrop-blur-sm p-5 shadow-card border border-white/20">
             <Users className="h-6 w-6 text-primary" />
             <p className="mt-2 font-display text-2xl font-bold text-foreground">{stats.total}</p>
             <p className="text-sm text-muted-foreground">Total Students</p>
           </div>
-          <div className="rounded-2xl bg-card p-5 shadow-card">
+          <div className="rounded-2xl bg-card/80 backdrop-blur-sm p-5 shadow-card border border-white/20">
             <Globe className="h-6 w-6 text-primary" />
             <p className="mt-2 font-display text-2xl font-bold text-foreground">{stats.online}</p>
             <p className="text-sm text-muted-foreground">Voted Online</p>
           </div>
-          <div className="rounded-2xl bg-card p-5 shadow-card">
+          <div className="rounded-2xl bg-card/80 backdrop-blur-sm p-5 shadow-card border border-white/20">
             <CheckCircle2 className="h-6 w-6 text-primary" />
             <p className="mt-2 font-display text-2xl font-bold text-foreground">{stats.offline}</p>
             <p className="text-sm text-muted-foreground">Voted Offline</p>
           </div>
-          <div className="rounded-2xl bg-card p-5 shadow-card">
+          <div className="rounded-2xl bg-card/80 backdrop-blur-sm p-5 shadow-card border border-white/20">
             <Circle className="h-6 w-6 text-muted-foreground" />
             <p className="mt-2 font-display text-2xl font-bold text-foreground">{stats.pending}</p>
             <p className="text-sm text-muted-foreground">Not Voted</p>
@@ -226,7 +276,7 @@ const ControllerDashboard = () => {
         </div>
 
         {/* Table */}
-        <div className="mt-6 rounded-2xl bg-card shadow-card overflow-hidden border border-border/40">
+        <div className="mt-6 rounded-2xl bg-card/80 backdrop-blur-sm shadow-card overflow-hidden border border-border/40">
           <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
             <Table className="relative">
               <TableHeader className="sticky top-0 bg-card/95 backdrop-blur z-10 shadow-sm">
@@ -324,10 +374,26 @@ const ControllerDashboard = () => {
           </div>
         )}
 
-        {/* Offline Ballot Votes — Tabbed by Position */}
         <div className="mt-10">
-          <h3 className="font-display text-xl font-bold text-foreground mb-1">Offline Ballot Votes</h3>
-          <p className="text-sm text-muted-foreground mb-5">Enter offline ballot votes per candidate. Switch between position categories using the tabs below.</p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
+            <div>
+              <h3 className="font-display text-xl font-bold text-foreground mb-1">Offline Ballot Votes</h3>
+              <p className="text-sm text-muted-foreground">Enter offline ballot votes per candidate. Switch between positions using the tabs.</p>
+            </div>
+            <div className="bg-card/80 backdrop-blur-sm border border-primary/20 rounded-2xl px-5 py-3 flex items-center gap-6 shadow-sm">
+              <div className="text-center">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Marked Offline</p>
+                <p className="text-xl font-bold text-foreground">{totalMarkedOffline}</p>
+              </div>
+              <div className="h-8 w-px bg-border/50" />
+              <div className="text-center">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Available Ballots</p>
+                <p className={`text-xl font-bold ${quotaInfo.remaining > 0 ? 'text-primary' : 'text-destructive'}`}>
+                  {quotaInfo.remaining}
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Position Tabs */}
           <div className="flex flex-wrap gap-2 mb-6">
@@ -383,6 +449,10 @@ const ControllerDashboard = () => {
                             const count = parseInt(offlineInput[candidate.id] || '0', 10);
                             if (!count || count <= 0) {
                               toast({ title: 'Invalid Count', description: 'Enter a valid number greater than 0.', variant: 'destructive' });
+                              return;
+                            }
+                            if (count > quotaInfo.remaining) {
+                              toast({ title: 'Quota Exceeded', description: `You only have ${quotaInfo.remaining} ballots remaining for this position.`, variant: 'destructive' });
                               return;
                             }
                             setOfflineConfirm({ id: candidate.id, name: candidate.name, count });
@@ -448,6 +518,7 @@ const ControllerDashboard = () => {
                                 isNota: true
                               });
                             }}
+                            disabled={quotaInfo.remaining === 0}
                             className="h-9 px-3"
                           >
                             Add
@@ -512,11 +583,19 @@ const ControllerDashboard = () => {
                 if (!offlineConfirm.isNota) {
                   await addOfflineVotesForCandidate(offlineConfirm.id, offlineConfirm.count);
                 } else {
-                  const position = offlineConfirm.id.replace('nota-offline-', '');
-                  await addOfflineNota(position, offlineConfirm.count);
+                  // Extract correct notaKey (handle Dept Rep)
+                  let notaKey = offlineConfirm.id.replace('nota-offline-', ''); // e.g., Chairperson or Department Representative-CS
+                  let dept: string | undefined = undefined;
+                  
+                  if (notaKey.includes('Department Representative-')) {
+                    dept = notaKey.split('-').pop();
+                    notaKey = 'Department Representative';
+                  }
+                  
+                  await addOfflineNota(notaKey, offlineConfirm.count, dept);
                 }
                 setSubmittedCandidates(prev => new Set([...prev, offlineConfirm.id]));
-                toast({ title: 'Votes Recorded', description: `${offlineConfirm.count} offline vote(s) recorded for ${offlineConfirm.name}.` });
+                setOfflineInput(prev => ({ ...prev, [offlineConfirm.id]: '' }));
                 setOfflineConfirm(null);
               }}
             >
