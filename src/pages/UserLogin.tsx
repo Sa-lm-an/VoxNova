@@ -30,6 +30,7 @@ const UserLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleIdScan = async (id: string) => {
+    console.log(id, registeredStudents);
     if (!isStudentRegistered(id)) {
       toast({
         title: 'Not Registered',
@@ -63,14 +64,14 @@ const UserLogin = () => {
 
     try {
       setIsLoading(true);
-      
+
       // Generate real 6-digit OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(otpCode);
-      
+
       // Send real SMS via Twilio
       const success = await sendOTP(student.phone, otpCode);
-      
+
       if (success) {
         toast({
           title: 'OTP Sent',
@@ -78,14 +79,20 @@ const UserLogin = () => {
         });
         setStep('otp');
       } else {
-        throw new Error('Twilio failed');
+        // throw new Error('Twilio failed');
+        toast({
+          title: 'OTP Not sent',
+          description: `Verification code not sent to registered mobile *******${student.phone.slice(-3)}.`,
+          variant: 'destructive',
+        });
+        setStep('otp');
       }
     } catch (error) {
-       toast({
-         title: 'SMS Service Error',
-         description: 'Failed to send verification code. Please check your Twilio credentials.',
-         variant: 'destructive'
-       });
+      toast({
+        title: 'SMS Service Error',
+        description: 'Failed to send verification code. Please check your Twilio credentials.',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +151,7 @@ const UserLogin = () => {
               const Icon = stepIcons[i];
               const isCurrent = step === (i === 0 ? 'scan' : 'otp');
               const isCompleted = stepIndex > i;
-              
+
               return (
                 <div key={label} className="flex items-center gap-6">
                   <div className="flex flex-col items-center gap-2">
@@ -185,10 +192,10 @@ const UserLogin = () => {
                   </p>
                 </div>
                 {isLoading ? (
-                   <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                      <div className="h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                      <p className="text-sm font-medium text-muted-foreground">Simulating OTP delivery...</p>
-                   </div>
+                  <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                    <div className="h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                    <p className="text-sm font-medium text-muted-foreground">Simulating OTP delivery...</p>
+                  </div>
                 ) : (
                   <IdCardScanner onScan={handleIdScan} />
                 )}
